@@ -1,139 +1,31 @@
-<!doctype html>
-<html lang="id">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1220">
-<title>VACS — Vehicle Access Control System</title>
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08111f"><title>VACS</title>
 <style>
-:root{--bg:#eef2f7;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#dbe3ee;--nav:#0b1220;--blue:#2563eb;--green:#16a34a;--red:#dc2626;--amber:#d97706;--shadow:0 10px 30px rgba(15,23,42,.08)}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Arial,sans-serif}
-header{background:var(--nav);color:#fff;padding:16px;position:sticky;top:0;z-index:10;box-shadow:0 4px 20px #0003}
-.head{max-width:980px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{font-weight:900;letter-spacing:.2px}.sub{font-size:11px;opacity:.68;margin-top:3px}.online{font-size:11px;background:#ffffff18;padding:7px 9px;border-radius:99px;white-space:nowrap}
-.wrap{max-width:980px;margin:auto;padding:14px}
-.searchbox,.card,.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
-.searchbox{padding:16px}.label{font-size:12px;color:var(--muted);font-weight:800;margin-bottom:7px;text-transform:uppercase;letter-spacing:.5px}
-#search{width:100%;border:2px solid #cbd5e1;border-radius:14px;padding:15px 16px;font-size:23px;font-weight:800;text-transform:uppercase;outline:0}#search:focus{border-color:var(--blue)}
-.hint{font-size:11px;color:var(--muted);margin-top:7px}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}.stat{padding:13px}.stat b{display:block;font-size:22px}.stat span{font-size:10px;color:var(--muted);font-weight:800}
-.results{display:grid;gap:10px}.vehicle{padding:16px}.plate{font-size:29px;font-weight:950;letter-spacing:1px}.owner{font-size:18px;font-weight:900;margin-top:8px}.meta{font-size:13px;color:var(--muted);margin-top:4px}.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}.chip{background:#edf2f7;border:1px solid var(--line);border-radius:99px;padding:6px 9px;font-size:11px}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:15px}.btn{border:0;border-radius:13px;padding:14px;color:#fff;font-weight:900;font-size:14px;cursor:pointer}.btn:disabled{opacity:.5}.in{background:var(--green)}.out{background:var(--red)}.secondary{background:#334155}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.tool{border:0;background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-weight:800;color:#334155}
-.empty{padding:18px;text-align:center;color:var(--muted);background:#fff;border:1px dashed #cbd5e1;border-radius:16px}.denied{padding:20px;border-radius:18px;background:#fff1f2;border:2px solid #fecdd3;color:#9f1239}.denied strong{display:block;font-size:18px}.recent{margin-top:14px}.recent h3{margin:0 0 9px}.log{background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px;margin-bottom:7px;display:flex;justify-content:space-between;gap:10px}.log small{color:var(--muted)}.badge{font-size:10px;font-weight:900;border-radius:99px;padding:6px 8px;height:max-content}.bin{background:#dcfce7;color:#166534}.bout{background:#fee2e2;color:#991b1b}
-.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.show{display:flex}.modalbox{width:min(440px,100%);background:#fff;border-radius:20px;padding:20px;box-shadow:0 20px 60px #0005}.modalbox h2{margin:0 0 10px}.modalbox p{line-height:1.55;color:#475569}.close{width:100%;border:0;border-radius:12px;padding:12px;background:#0f172a;color:#fff;font-weight:800}
-@media(max-width:600px){.stats{grid-template-columns:1fr 1fr}.actions{grid-template-columns:1fr 1fr}.plate{font-size:25px}}
-</style>
-</head>
-<body>
-<header><div class="head"><div><div class="brand">VACS — Vehicle Access Control System</div><div class="sub">Central Vehicle Database • Multi Device • Server Timestamp</div></div><div class="online" id="conn">CONNECTING…</div></div></header>
-<main class="wrap">
-<section class="searchbox">
-<div class="label">Vehicle Search</div>
-<input id="search" autocomplete="off" inputmode="text" placeholder="Ketik 98 / FUX / B9856">
-<div class="hint">Nomor polisi tidak perlu lengkap. Semua device mencari database pusat yang sama.</div>
-</section>
-<section class="stats">
-<div class="stat"><b id="vehicles">—</b><span>REGISTERED VEHICLES</span></div>
-<div class="stat"><b id="owners">—</b><span>OWNERS</span></div>
-<div class="stat"><b id="todayIn">—</b><span>IN HARI INI</span></div>
-<div class="stat"><b id="denied">—</b><span>DITOLAK</span></div>
-</section>
-<div class="toolbar"><button class="tool" onclick="loadDash()">↻ Refresh</button><button class="tool" onclick="setOperator()">⚙ Operator / Gate</button></div>
-<section id="results" class="results"><div class="empty">Ketik nomor polisi untuk mencari kendaraan.</div></section>
-<section class="recent"><h3>Aktivitas Terakhir</h3><div id="recent"><div class="empty">Memuat…</div></div></section>
+:root{--nav:#08111f;--bg:#eef2f7;--card:#fff;--muted:#69778b;--line:#dce3ec;--green:#0f9d58;--red:#d93025;--blue:#1769e0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#172033;font-family:Arial,system-ui,sans-serif}header{background:var(--nav);color:white;padding:24px 20px;position:relative}h1{margin:0 0 7px;font-size:25px}header p{margin:0;color:#aeb9c9}.status{position:absolute;right:16px;top:25px;padding:9px 12px;border-radius:99px;background:#5c2630;font-size:13px;font-weight:bold}.online{background:#164b35!important}main{max-width:900px;margin:auto;padding:15px}.card,.stat{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 10px 28px #16203312}.card{padding:20px;margin-bottom:14px}.label{font-size:14px;font-weight:800;color:#66758b;margin-bottom:12px}.search{width:100%;height:68px;border:3px solid #cbd5e1;border-radius:20px;padding:0 20px;font-size:25px;font-weight:800;outline:0}.search:focus{border-color:var(--blue)}.hint,.meta{color:var(--muted);line-height:1.5;margin-top:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}.stat{padding:18px}.stat b{display:block;font-size:28px;margin-bottom:6px}.stat span{font-size:12px;font-weight:800;color:#68768b}.profile{display:none}.profile.show{display:block}.plate{font-size:29px;font-weight:900}.owner{font-size:22px;font-weight:800;margin-top:5px}.vehicle{border-top:1px solid var(--line);margin-top:15px;padding-top:15px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:17px}.btn{border:1px solid var(--line);background:#fff;border-radius:15px;padding:13px 17px;font-weight:800;font-size:15px}.green{background:var(--green);color:#fff}.red{background:var(--red);color:#fff}.blue{background:var(--blue);color:#fff}.btn:disabled{opacity:.45}.result{display:none;margin-top:12px;padding:14px;border-radius:16px;font-weight:bold}.show{display:block}.ok{background:#e9f7ef;color:#096b3b}.err{background:#fdecec;color:#9b1c1c}.log{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)}.empty{text-align:center;color:var(--muted);padding:20px;border:2px dashed #d6dde7;border-radius:17px}.in{color:var(--green);font-weight:900}.out{color:var(--red);font-weight:900}@media(max-width:600px){h1{font-size:22px}.search{font-size:22px}.card{padding:17px}}
+</style></head><body>
+<header><div id="status" class="status">● OFFLINE</div><h1>VACS — Vehicle Access Control System</h1><p>Central Vehicle Database • Multi Device • Server Timestamp</p></header>
+<main>
+<section class="card"><div class="label">VEHICLE SEARCH</div><input id="search" class="search" placeholder="KETIK 98 / FUX / B9856" autocomplete="off"><div class="hint">Ketik sebagian nomor polisi. Semua device membaca database pusat yang sama.</div><div id="result" class="result"></div></section>
+<section id="profile" class="card profile"><div class="label">REGISTERED VEHICLE</div><div id="plate" class="plate">—</div><div id="owner" class="owner">—</div><div id="meta" class="meta">—</div><div id="vehicle" class="vehicle">—</div><div class="actions"><button id="in" class="btn green">✓ VEHICLE IN</button><button id="out" class="btn red">↗ VEHICLE OUT</button></div></section>
+<section class="grid"><div class="stat"><b id="vehicles">—</b><span>REGISTERED VEHICLES</span></div><div class="stat"><b id="owners">—</b><span>OWNERS</span></div><div class="stat"><b id="ins">—</b><span>IN HARI INI</span></div><div class="stat"><b id="denied">—</b><span>DITOLAK</span></div></section>
+<section class="card"><div class="actions" style="margin-top:0"><button id="refresh" class="btn blue">↻ Refresh</button><button id="operator" class="btn">⚙ Operator / Gate</button></div></section>
+<section class="card"><div class="label">AKTIVITAS TERAKHIR</div><div id="logs" class="empty">Memuat...</div></section>
 </main>
-<div class="modal" id="modal"><div class="modalbox" id="modalbox"></div></div>
-
 <script>
-/* ===========================
-   VACS CONFIG
-   GANTI URL DI BAWAH DENGAN
-   URL DEPLOYMENT WEB APP GAS
-   =========================== */
-const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw08oszOwH1vJfwkzrJvqrMKV_RlOx3Y0ceikhhZqnvB8C6wmCdv7XeWNq3PnZYVJcx/exec";
-
+const GAS_API_URL="https://script.google.com/macros/s/AKfycbwGzIi5_Ib9l4G_Xghz1WEis2dDC2zJFZdoRcib2kYIQEwA7maiFS4xZKaxlNeaqw-2/exec";
 const $=id=>document.getElementById(id);
-let timer;
-let deviceId=localStorage.getItem("vacs_device_id");
-if(!deviceId){deviceId="DEV-"+Math.random().toString(36).slice(2,10).toUpperCase();localStorage.setItem("vacs_device_id",deviceId)}
-
-function cfg(){
-  if(GAS_API_URL.includes("PASTE_YOUR")) throw new Error("URL Google Apps Script belum dipasang di index.html.");
-  return GAS_API_URL;
-}
-async function api(action,data={}){
-  const url=cfg()+"?action="+encodeURIComponent(action)+"&payload="+encodeURIComponent(JSON.stringify(data));
-  const r=await fetch(url,{cache:"no-store"});
-  const j=await r.json();
-  if(!j.ok) throw new Error(j.message||"API error");
-  return j.data;
-}
-function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function setConn(ok){$("conn").textContent=ok?"● CENTRAL ONLINE":"● OFFLINE";$("conn").style.background=ok?"#16a34a33":"#dc262633"}
-
-async function loadDash(){
- try{
-  const d=await api("dashboard");
-  $("vehicles").textContent=d.vehicles;$("owners").textContent=d.owners;$("todayIn").textContent=d.inToday;$("denied").textContent=d.deniedToday;
-  setConn(true);
-  const logs=await api("recent",{limit:10});
-  renderRecent(logs);
- }catch(e){setConn(false)}
-}
-function renderRecent(logs){
- if(!logs.length){$("recent").innerHTML='<div class="empty">Belum ada transaksi.</div>';return}
- $("recent").innerHTML=logs.map(x=>`<div class="log"><div><b>${esc(x.plate)}</b> — ${esc(x.name)}<br><small>${esc(x.timestamp)} WIB • ${esc(x.gate)} • ${esc(x.officerName)}</small></div><span class="badge ${x.activity==="IN"?"bin":"bout"}">${esc(x.activity)}</span></div>`).join("");
-}
-async function doSearch(){
- const q=$("search").value.trim();
- if(!q){$("results").innerHTML='<div class="empty">Ketik nomor polisi untuk mencari kendaraan.</div>';return}
- $("results").innerHTML='<div class="empty">Mencari database pusat…</div>';
- try{
-  const data=await api("search",{q});
-  setConn(true);
-  if(!data.found.length){
-   $("results").innerHTML=`<div class="denied"><strong>🚫 KENDARAAN TIDAK TERDAFTAR</strong>Nomor/pola <b>${esc(q)}</b> tidak ditemukan dalam database kendaraan resmi.<br><br><b>AKSES MASUK DITOLAK.</b></div>`;
-   return;
-  }
-  $("results").innerHTML=data.found.map(v=>`
-  <article class="card vehicle">
-    <div class="plate">${esc(v.plate)}</div>
-    <div class="owner">${esc(v.name||"Pemilik belum diisi")}</div>
-    <div class="meta">${esc(v.position||"-")} • ${esc(v.division||"-")}</div>
-    <div class="chips"><span class="chip">${esc(v.brand||"-")} ${esc(v.model||"")}</span><span class="chip">${esc(v.color||"-")}</span><span class="chip">${esc(v.employeeId||"-")}</span></div>
-    <div class="actions">
-      <button class="btn in" onclick='record(${JSON.stringify(v)},"IN")'>🟢 VEHICLE IN</button>
-      <button class="btn out" onclick='record(${JSON.stringify(v)},"OUT")'>🔴 VEHICLE OUT</button>
-    </div>
-  </article>`).join("");
- }catch(e){setConn(false);$("results").innerHTML=`<div class="denied"><strong>⚠️ CONNECTION ERROR</strong>${esc(e.message)}</div>`}
-}
-async function record(v,activity){
- try{
-  const operator=getOperator();
-  const d=await api("access",{plate:v.plate,activity,gate:operator.gate,officerId:operator.id,officerName:operator.name,deviceId});
-  show(activity==="IN"?"🟢 VEHICLE IN":"🔴 VEHICLE OUT",`<b>${esc(d.vehicle.plate)}</b><br>${esc(d.vehicle.name)}<br>${esc(d.vehicle.division)} • ${esc(d.vehicle.position)}<br><br>Server timestamp:<br><b>${esc(d.timestamp)} WIB</b>`,"ok");
-  loadDash();doSearch();
- }catch(e){show("🚫 AKSES DITOLAK",esc(e.message),"bad")}
-}
-function getOperator(){
- return {id:localStorage.getItem("vacs_officer_id")||"SEC-001",name:localStorage.getItem("vacs_officer_name")||"Operator",gate:localStorage.getItem("vacs_gate")||"Gate 1"};
-}
-function setOperator(){
- const o=getOperator();
- const id=prompt("Officer ID:",o.id);if(id===null)return;
- const name=prompt("Nama petugas:",o.name);if(name===null)return;
- const gate=prompt("Gate / Pos:",o.gate);if(gate===null)return;
- localStorage.setItem("vacs_officer_id",id);localStorage.setItem("vacs_officer_name",name);localStorage.setItem("vacs_gate",gate);
- show("Operator tersimpan",`${esc(name)}<br>${esc(id)}<br>${esc(gate)}`,"ok");
-}
-function show(title,body,cls){
- $("modalbox").innerHTML=`<h2 class="${cls==="bad"?"bad":"ok"}">${title}</h2><p>${body}</p><button class="close" onclick="closeModal()">Tutup</button>`;
- $("modal").classList.add("show");
-}
-function closeModal(){$("modal").classList.remove("show")}
-$("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
-$("search").addEventListener("input",()=>{clearTimeout(timer);timer=setTimeout(doSearch,180)});
-loadDash();
-</script>
-</body>
-</html>
+let selected=null;
+const deviceId=localStorage.vacs_device_id||(localStorage.vacs_device_id='WEB-'+Math.random().toString(36).slice(2,9).toUpperCase());
+function norm(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function api(params,timeout=10000){return new Promise((resolve,reject)=>{const cb='vacs_'+Date.now()+'_'+Math.floor(Math.random()*9999),s=document.createElement('script');let t;window[cb]=d=>{clearTimeout(t);s.remove();delete window[cb];resolve(d)};s.onerror=()=>{clearTimeout(t);s.remove();delete window[cb];reject(Error('Gagal menghubungi server VACS'))};const q=new URLSearchParams({...params,callback:cb});s.src=GAS_API_URL+'?'+q;s.async=true;document.body.appendChild(s);t=setTimeout(()=>{s.remove();delete window[cb];reject(Error('Server timeout'))},timeout)})}
+function online(x){$('status').textContent=x?'● ONLINE':'● OFFLINE';$('status').classList.toggle('online',x)}
+async function health(){try{const r=await api({action:'health'});if(!r.ok)throw Error(r.message);online(true);return true}catch(e){online(false);return false}}
+async function dash(){try{const r=await api({action:'dashboard'});if(!r.ok)throw Error(r.message);$('vehicles').textContent=r.data.vehicles;$('owners').textContent=r.data.owners;$('ins').textContent=r.data.inToday;$('denied').textContent=r.data.deniedToday}catch(e){}}
+async function recent(){try{const r=await api({action:'recent',limit:10});if(!r.ok)throw Error(r.message);const a=r.data||[];$('logs').className=a.length?'':'empty';$('logs').innerHTML=a.length?a.map(x=>`<div class="log"><div><b>${esc(x.plate)}</b> · ${esc(x.name||'-')}<br><small>${esc(x.timestamp)} · ${esc(x.gate||'-')}</small></div><b class="${String(x.activity).toUpperCase()==='IN'?'in':'out'}">${esc(x.activity)}</b></div>`).join(''):'Belum ada aktivitas.'}catch(e){$('logs').textContent='Aktivitas belum dapat dimuat.'}}
+function profile(v){selected=v;$('profile').classList.add('show');$('plate').textContent=v.plate;$('owner').textContent=v.name||'-';$('meta').innerHTML=`${esc(v.division||'-')} • ${esc(v.position||'-')}<br>Employee ID: ${esc(v.employeeId||'-')} • ${esc(v.phone||'-')}`;$('vehicle').textContent=`${v.brand||'-'} ${v.model||'-'} • ${v.year||'-'} • ${v.color||'-'} • ${v.type||'-'}`}
+async function search(){const q=$('search').value.trim();if(!q){$('profile').classList.remove('show');$('result').className='result';return}try{const r=await api({action:'search',q:q});if(!r.ok)throw Error(r.message);const a=r.data.found||[];if(!a.length){$('profile').classList.remove('show');$('result').className='result show err';$('result').textContent='🚫 KENDARAAN TIDAK TERDAFTAR';return}const v=a.find(x=>norm(x.plate)===norm(q))||a[0];profile(v);$('result').className='result show ok';$('result').textContent='✓ Kendaraan terdaftar';online(true)}catch(e){$('result').className='result show err';$('result').textContent='Server tidak dapat dihubungi: '+e.message;online(false)}}
+async function access(act){if(!selected)return;try{const r=await api({action:'access',plate:selected.plate,activity:act,gate:localStorage.vacs_gate||'Gate 1',officerId:'SEC-001',officerName:localStorage.vacs_officer_name||'Operator',deviceId:deviceId});if(!r.ok)throw Error(r.message);$('result').className='result show ok';$('result').textContent=`✓ ${act} berhasil dicatat • ${r.data.timestamp}`;online(true);await dash();await recent()}catch(e){$('result').className='result show err';$('result').textContent='🚫 '+e.message}}
+$('search').addEventListener('input',()=>{clearTimeout(window.st);window.st=setTimeout(search,250)});$('in').onclick=()=>access('IN');$('out').onclick=()=>access('OUT');$('refresh').onclick=async()=>{if(await health()){await dash();await recent()}};$('operator').onclick=()=>{let g=prompt('Nama Gate:',localStorage.vacs_gate||'Gate 1');if(g!==null)localStorage.vacs_gate=g;let n=prompt('Nama Operator:',localStorage.vacs_officer_name||'Operator');if(n!==null)localStorage.vacs_officer_name=n};
+(async()=>{if(await health()){await dash();await recent()}})();
+</script></body></html>
