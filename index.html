@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>VACS — Vehicle Access Control System</title>
+<style>
+:root{--bg:#eef2f7;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#dbe3ee;--nav:#0b1220;--blue:#2563eb;--green:#16a34a;--red:#dc2626;--amber:#d97706;--shadow:0 10px 30px rgba(15,23,42,.08)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Arial,sans-serif}
+header{background:var(--nav);color:#fff;padding:16px;position:sticky;top:0;z-index:10;box-shadow:0 4px 20px #0003}
+.head{max-width:980px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{font-weight:900;letter-spacing:.2px}.sub{font-size:11px;opacity:.68;margin-top:3px}.online{font-size:11px;background:#ffffff18;padding:7px 9px;border-radius:99px;white-space:nowrap}
+.wrap{max-width:980px;margin:auto;padding:14px}
+.searchbox,.card,.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.searchbox{padding:16px}.label{font-size:12px;color:var(--muted);font-weight:800;margin-bottom:7px;text-transform:uppercase;letter-spacing:.5px}
+#search{width:100%;border:2px solid #cbd5e1;border-radius:14px;padding:15px 16px;font-size:23px;font-weight:800;text-transform:uppercase;outline:0}#search:focus{border-color:var(--blue)}
+.hint{font-size:11px;color:var(--muted);margin-top:7px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}.stat{padding:13px}.stat b{display:block;font-size:22px}.stat span{font-size:10px;color:var(--muted);font-weight:800}
+.results{display:grid;gap:10px}.vehicle{padding:16px}.plate{font-size:29px;font-weight:950;letter-spacing:1px}.owner{font-size:18px;font-weight:900;margin-top:8px}.meta{font-size:13px;color:var(--muted);margin-top:4px}.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}.chip{background:#edf2f7;border:1px solid var(--line);border-radius:99px;padding:6px 9px;font-size:11px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:15px}.btn{border:0;border-radius:13px;padding:14px;color:#fff;font-weight:900;font-size:14px;cursor:pointer}.btn:disabled{opacity:.5}.in{background:var(--green)}.out{background:var(--red)}.secondary{background:#334155}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.tool{border:0;background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-weight:800;color:#334155}
+.empty{padding:18px;text-align:center;color:var(--muted);background:#fff;border:1px dashed #cbd5e1;border-radius:16px}.denied{padding:20px;border-radius:18px;background:#fff1f2;border:2px solid #fecdd3;color:#9f1239}.denied strong{display:block;font-size:18px}.recent{margin-top:14px}.recent h3{margin:0 0 9px}.log{background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px;margin-bottom:7px;display:flex;justify-content:space-between;gap:10px}.log small{color:var(--muted)}.badge{font-size:10px;font-weight:900;border-radius:99px;padding:6px 8px;height:max-content}.bin{background:#dcfce7;color:#166534}.bout{background:#fee2e2;color:#991b1b}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.show{display:flex}.modalbox{width:min(440px,100%);background:#fff;border-radius:20px;padding:20px;box-shadow:0 20px 60px #0005}.modalbox h2{margin:0 0 10px}.modalbox p{line-height:1.55;color:#475569}.close{width:100%;border:0;border-radius:12px;padding:12px;background:#0f172a;color:#fff;font-weight:800}
+@media(max-width:600px){.stats{grid-template-columns:1fr 1fr}.actions{grid-template-columns:1fr 1fr}.plate{font-size:25px}}
+</style>
+</head>
+<body>
+<header><div class="head"><div><div class="brand">VACS — Vehicle Access Control System</div><div class="sub">Central Vehicle Database • Multi Device • Server Timestamp</div></div><div class="online" id="conn">CONNECTING…</div></div></header>
+<main class="wrap">
+<section class="searchbox">
+<div class="label">Vehicle Search</div>
+<input id="search" autocomplete="off" inputmode="text" placeholder="Ketik 98 / FUX / B9856">
+<div class="hint">Nomor polisi tidak perlu lengkap. Semua device mencari database pusat yang sama.</div>
+</section>
+<section class="stats">
+<div class="stat"><b id="vehicles">—</b><span>REGISTERED VEHICLES</span></div>
+<div class="stat"><b id="owners">—</b><span>OWNERS</span></div>
+<div class="stat"><b id="todayIn">—</b><span>IN HARI INI</span></div>
+<div class="stat"><b id="denied">—</b><span>DITOLAK</span></div>
+</section>
+<div class="toolbar"><button class="tool" onclick="loadDash()">↻ Refresh</button><button class="tool" onclick="setOperator()">⚙ Operator / Gate</button></div>
+<section id="results" class="results"><div class="empty">Ketik nomor polisi untuk mencari kendaraan.</div></section>
+<section class="recent"><h3>Aktivitas Terakhir</h3><div id="recent"><div class="empty">Memuat…</div></div></section>
+</main>
+<div class="modal" id="modal"><div class="modalbox" id="modalbox"></div></div>
+
+<script>
+/* ===========================
+   VACS CONFIG
+   GANTI URL DI BAWAH DENGAN
+   URL DEPLOYMENT WEB APP GAS
+   =========================== */
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw08oszOwH1vJfwkzrJvqrMKV_RlOx3Y0ceikhhZqnvB8C6wmCdv7XeWNq3PnZYVJcx/exec";
+
+const $=id=>document.getElementById(id);
+let timer;
+let deviceId=localStorage.getItem("vacs_device_id");
+if(!deviceId){deviceId="DEV-"+Math.random().toString(36).slice(2,10).toUpperCase();localStorage.setItem("vacs_device_id",deviceId)}
+
+function cfg(){
+  if(GAS_API_URL.includes("PASTE_YOUR")) throw new Error("URL Google Apps Script belum dipasang di index.html.");
+  return GAS_API_URL;
+}
+async function api(action,data={}){
+  const url=cfg()+"?action="+encodeURIComponent(action)+"&payload="+encodeURIComponent(JSON.stringify(data));
+  const r=await fetch(url,{cache:"no-store"});
+  const j=await r.json();
+  if(!j.ok) throw new Error(j.message||"API error");
+  return j.data;
+}
+function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function setConn(ok){$("conn").textContent=ok?"● CENTRAL ONLINE":"● OFFLINE";$("conn").style.background=ok?"#16a34a33":"#dc262633"}
+
+async function loadDash(){
+ try{
+  const d=await api("dashboard");
+  $("vehicles").textContent=d.vehicles;$("owners").textContent=d.owners;$("todayIn").textContent=d.inToday;$("denied").textContent=d.deniedToday;
+  setConn(true);
+  const logs=await api("recent",{limit:10});
+  renderRecent(logs);
+ }catch(e){setConn(false)}
+}
+function renderRecent(logs){
+ if(!logs.length){$("recent").innerHTML='<div class="empty">Belum ada transaksi.</div>';return}
+ $("recent").innerHTML=logs.map(x=>`<div class="log"><div><b>${esc(x.plate)}</b> — ${esc(x.name)}<br><small>${esc(x.timestamp)} WIB • ${esc(x.gate)} • ${esc(x.officerName)}</small></div><span class="badge ${x.activity==="IN"?"bin":"bout"}">${esc(x.activity)}</span></div>`).join("");
+}
+async function doSearch(){
+ const q=$("search").value.trim();
+ if(!q){$("results").innerHTML='<div class="empty">Ketik nomor polisi untuk mencari kendaraan.</div>';return}
+ $("results").innerHTML='<div class="empty">Mencari database pusat…</div>';
+ try{
+  const data=await api("search",{q});
+  setConn(true);
+  if(!data.found.length){
+   $("results").innerHTML=`<div class="denied"><strong>🚫 KENDARAAN TIDAK TERDAFTAR</strong>Nomor/pola <b>${esc(q)}</b> tidak ditemukan dalam database kendaraan resmi.<br><br><b>AKSES MASUK DITOLAK.</b></div>`;
+   return;
+  }
+  $("results").innerHTML=data.found.map(v=>`
+  <article class="card vehicle">
+    <div class="plate">${esc(v.plate)}</div>
+    <div class="owner">${esc(v.name||"Pemilik belum diisi")}</div>
+    <div class="meta">${esc(v.position||"-")} • ${esc(v.division||"-")}</div>
+    <div class="chips"><span class="chip">${esc(v.brand||"-")} ${esc(v.model||"")}</span><span class="chip">${esc(v.color||"-")}</span><span class="chip">${esc(v.employeeId||"-")}</span></div>
+    <div class="actions">
+      <button class="btn in" onclick='record(${JSON.stringify(v)},"IN")'>🟢 VEHICLE IN</button>
+      <button class="btn out" onclick='record(${JSON.stringify(v)},"OUT")'>🔴 VEHICLE OUT</button>
+    </div>
+  </article>`).join("");
+ }catch(e){setConn(false);$("results").innerHTML=`<div class="denied"><strong>⚠️ CONNECTION ERROR</strong>${esc(e.message)}</div>`}
+}
+async function record(v,activity){
+ try{
+  const operator=getOperator();
+  const d=await api("access",{plate:v.plate,activity,gate:operator.gate,officerId:operator.id,officerName:operator.name,deviceId});
+  show(activity==="IN"?"🟢 VEHICLE IN":"🔴 VEHICLE OUT",`<b>${esc(d.vehicle.plate)}</b><br>${esc(d.vehicle.name)}<br>${esc(d.vehicle.division)} • ${esc(d.vehicle.position)}<br><br>Server timestamp:<br><b>${esc(d.timestamp)} WIB</b>`,"ok");
+  loadDash();doSearch();
+ }catch(e){show("🚫 AKSES DITOLAK",esc(e.message),"bad")}
+}
+function getOperator(){
+ return {id:localStorage.getItem("vacs_officer_id")||"SEC-001",name:localStorage.getItem("vacs_officer_name")||"Operator",gate:localStorage.getItem("vacs_gate")||"Gate 1"};
+}
+function setOperator(){
+ const o=getOperator();
+ const id=prompt("Officer ID:",o.id);if(id===null)return;
+ const name=prompt("Nama petugas:",o.name);if(name===null)return;
+ const gate=prompt("Gate / Pos:",o.gate);if(gate===null)return;
+ localStorage.setItem("vacs_officer_id",id);localStorage.setItem("vacs_officer_name",name);localStorage.setItem("vacs_gate",gate);
+ show("Operator tersimpan",`${esc(name)}<br>${esc(id)}<br>${esc(gate)}`,"ok");
+}
+function show(title,body,cls){
+ $("modalbox").innerHTML=`<h2 class="${cls==="bad"?"bad":"ok"}">${title}</h2><p>${body}</p><button class="close" onclick="closeModal()">Tutup</button>`;
+ $("modal").classList.add("show");
+}
+function closeModal(){$("modal").classList.remove("show")}
+$("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
+$("search").addEventListener("input",()=>{clearTimeout(timer);timer=setTimeout(doSearch,180)});
+loadDash();
+</script>
+</body>
+</html>
