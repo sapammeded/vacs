@@ -67,7 +67,7 @@
 
 <section id="report" class="panel"><div class="card"><div class="label">📊 REPORT 1×24 JAM</div><div class="formgrid"><div class="field"><label>TAHUN</label><input id="rYear" type="number"></div><div class="field"><label>BULAN</label><input id="rMonth" type="number" min="1" max="12" placeholder="Kosong = semua"></div></div><div class="actions"><button id="generateReport" class="btn blue">📊 GENERATE REPORT</button><button id="exportReport" class="btn orange">⬇ EXPORT EXCEL</button><button id="printReport" class="btn">🖨 PRINT / PDF</button></div></div><div id="reportTable" class="empty">Generate report untuk melihat data.</div></section>
 </main><div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 const GAS_API_URL="https://script.google.com/macros/s/AKfycbxc_4Vr3riNGZ-vMhlrtfFDh7HSlQBQRuHHS341Rmg4rfu1u_IVtM54jgHZPUgnnALg/exec",CREATED_BY="Mbah Pri",$=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 let selected=null,lastReport=null;
@@ -92,7 +92,105 @@ async function audit(){try{const r=await call({action:'audit',q:$('auditSearch')
 async function backup(){const b=$('backupBtn');b.disabled=true;try{const r=await call({action:'backup'},30000);if(!r.ok)throw Error(r.message);$('backupResult').textContent=`✓ Backup dibuat: ${r.data.name}`;$('backupResult').className='result show ok'}catch(e){$('backupResult').textContent='❌ '+e.message;$('backupResult').className='result show err'}finally{b.disabled=false}}
 async function report(){try{const r=await call({action:'report',year:$('rYear').value,month:$('rMonth').value||'ALL'},30000);lastReport=r.data;const a=r.data.rows||[];$('reportTable').className='tablewrap';$('reportTable').innerHTML=`<table class="table"><tr><th>Nama</th><th>Nomor Kendaraan</th><th>Bagian/Divisi</th><th>Jenis</th><th>Model</th><th>Warna</th><th>IN</th><th>OUT</th><th>Tanggal</th><th>Keterangan</th></tr>${a.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.plate)}</td><td>${esc(x.division)}</td><td>${esc(x.type)}</td><td>${esc(x.model)}</td><td>${esc(x.color)}</td><td>${esc(x.inTime)}</td><td>${esc(x.outTime)}</td><td>${esc(x.date)}</td><td>${esc(x.notes)}</td></tr>`).join('')||'<tr><td colspan="10">Tidak ada data.</td></tr>'}</table>`}catch(e){$('reportTable').className='empty';$('reportTable').textContent='❌ '+e.message}}
 function exportReport(){if(!lastReport)return toast('Generate report dulu.');const a=[['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan'],...(lastReport.rows||[]).map(x=>[x.name,x.plate,x.division,x.type,x.model,x.color,x.inTime,x.outTime,x.date,x.notes])],w=XLSX.utils.book_new(),s=XLSX.utils.aoa_to_sheet(a);XLSX.utils.book_append_sheet(w,s,'ACCESS_LOG');XLSX.writeFile(w,'VACS_ACCESS_LOG.xlsx')}
-function printReport(){const t=$('reportTable').querySelector('table');if(!t)return toast('Generate report dulu.');const w=window.open('','_blank');if(!w)return toast('Popup diblokir.');w.document.write('<html><body><h2>VACS — ACCESS REPORT</h2><b>CREATED BY: Mbah Pri</b>'+t.outerHTML+'</body></html>');w.document.close();setTimeout(()=>w.print(),300)}
+function printReport(){
+ if(!lastReport){toast("Generate report dulu.");return}
+ if(!window.jspdf||!window.jspdf.jsPDF){toast("PDF engine belum siap. Refresh lalu coba lagi.");return}
+ const {jsPDF}=window.jspdf, doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+ const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
+ const navy=[8,22,38],blue=[24,88,150],green=[21,128,82],red=[190,38,45],line=[210,219,228],soft=[244,247,250];
+ const period=($("rYear").value||"ALL")+(($("rMonth").value)?" / "+$("rMonth").value:"");
+ let pageNo=0;
+ function drawHeader(){
+   pageNo++;
+   doc.setFillColor(...navy);doc.rect(0,0,W,27,"F");
+   doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(16);doc.text("VACS — VEHICLE ACCESS CONTROL SYSTEM",12,11);
+   doc.setFont("helvetica","normal");doc.setFontSize(8);doc.text("CENTRAL MULTI-DEVICE • OFFICIAL ACCESS REPORT",12,18);
+   doc.text("PERIODE: "+period,W-12,18,{align:"right"});
+   doc.setTextColor(...navy);doc.setFont("helvetica","bold");doc.setFontSize(10);doc.text("CREATED BY: Mbah Pri",12,34);
+   doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(95,105,118);doc.text("Generated: "+new Date().toLocaleString("id-ID"),12,39);
+ }
+ function footer(){
+   doc.setDrawColor(...line);doc.line(12,H-11,W-12,H-11);doc.setFontSize(7);doc.setTextColor(105,115,125);
+   doc.text("VACS • Vehicle Access Control System",12,H-6);doc.text("Page "+pageNo,W-12,H-6,{align:"right"});
+ }
+ drawHeader();
+ const s=lastReport.summary||{total:0,in:0,out:0,denied:0};
+ const vals=[["TOTAL",s.total,blue],["VEHICLE IN",s.in,green],["VEHICLE OUT",s.out,navy],["DENIED",s.denied,red]];
+ const gap=4,w=(W-24-gap*3)/4;
+ vals.forEach((v,i)=>{let x=12+i*(w+gap);doc.setFillColor(...soft);doc.setDrawColor(...line);doc.roundedRect(x,46,w,18,2,2,"FD");doc.setTextColor(95,105,118);doc.setFontSize(7);doc.setFont("helvetica","bold");doc.text(v[0],x+4,53);doc.setTextColor(...v[2]);doc.setFontSize(13);doc.text(String(v[1]),x+4,60)});
+ const rows=(lastReport.logs||[]).map(x=>[
+   x["Tanggal"]||"—",x["Jam"]||"—",x["No Polisi"]||"—",x["Nama Pemilik"]||"—",
+   x["Divisi"]||"—",x["Jabatan"]||"—",x["Activity"]||"—",x["Gate"]||"—",
+   x["Officer Name"]||"—",x["Device ID"]||"—"
+ ]);
+ doc.autoTable({
+   startY:73,
+   head:[["TANGGAL","JAM","NO POLISI","PEMILIK","BAGIAN / DIVISI","JABATAN","ACTIVITY","GATE","OFFICER","DEVICE"]],
+   body:rows,
+   theme:"grid",
+   styles:{font:"helvetica",fontSize:7,cellPadding:2,textColor:[35,45,58],lineColor:line,lineWidth:.25,overflow:"linebreak",valign:"middle"},
+   headStyles:{fillColor:blue,textColor:255,fontStyle:"bold",fontSize:7},
+   alternateRowStyles:{fillColor:[249,251,253]},
+   margin:{left:12,right:12,bottom:17},
+   didParseCell:function(data){
+     if(data.section==="body" && data.column.index===6){
+       const val=String(data.cell.raw||"").toUpperCase();
+       if(val==="IN") data.cell.styles.textColor=green;
+       if(val==="OUT") data.cell.styles.textColor=red;
+       if(val==="DENIED") data.cell.styles.textColor=red;
+     }
+   },
+   didDrawPage:footer
+ });
+ doc.save("VACS_ACCESS_REPORT_"+period.replace(/\s+/g,"_").replace(/\//g,"-")+".pdf");
+ toast("✓ PDF profesional berhasil di-download.");
+}  if(!lastReport || !Array.isArray(lastReport.rows) || !lastReport.rows.length){
+    toast('Generate report dulu.');
+    return;
+  }
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    toast('PDF engine belum siap. Refresh halaman lalu coba lagi.');
+    return;
+  }
+  try{
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const rows=lastReport.rows.map(x=>[
+      x.name||'',x.plate||'',x.division||'',x.type||'',x.model||'',x.color||'',
+      x.inTime||'',x.outTime||'',x.date||'',x.notes||''
+    ]);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(15);
+    doc.text('VACS — ACCESS REPORT 1×24 JAM',14,14);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','normal');
+    doc.text('CREATED BY: Mbah Pri',14,20);
+    doc.text('Generated: '+new Date().toLocaleString('id-ID'),14,25);
+    doc.autoTable({
+      startY:30,
+      head:[['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis','Model','Warna','IN','OUT','Tanggal','Keterangan']],
+      body:rows,
+      theme:'grid',
+      styles:{fontSize:7,cellPadding:2,overflow:'linebreak',valign:'middle'},
+      headStyles:{fontStyle:'bold'},
+      margin:{left:10,right:10,top:30,bottom:14},
+      didDrawPage:function(data){
+        const y=287;
+        doc.setFontSize(8);
+        doc.setTextColor(190,0,0);
+        doc.text('CREATED BY: Mbah Pri',data.settings.margin.left,y);
+        doc.setTextColor(0,0,0);
+      }
+    });
+    const year=$('rYear').value||new Date().getFullYear();
+    const month=$('rMonth').value||'ALL';
+    doc.save('VACS_ACCESS_REPORT_'+year+'_'+month+'.pdf');
+    toast('✓ PDF berhasil di-download.');
+  }catch(e){
+    console.error(e);
+    toast('❌ PDF gagal dibuat: '+(e.message||e));
+  }
+}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(b.dataset.tab).classList.add('active');if(b.dataset.tab==='current')current();if(b.dataset.tab==='audit')audit()});
 $('search').oninput=()=>{clearTimeout(window.__s);window.__s=setTimeout(search,220)};$('inBtn').onclick=()=>gate('IN');$('outBtn').onclick=()=>gate('OUT');$('saveMasterBtn').onclick=saveM;$('clearMasterBtn').onclick=clearM;$('deleteVehicleBtn').onclick=async()=>{const plate=$('delPlate').value.trim(),pin=$('adminPin').value.trim();if(!plate||!pin)return toast('Nomor Kendaraan dan PIN wajib diisi.');const b=$('deleteVehicleBtn');b.disabled=true;try{const r=await call({action:'deleteVehicle',plate,pin},20000);if(!r.ok)throw Error(r.message);$('deleteResult').textContent='✓ '+r.data.message;$('deleteResult').className='result show ok';$('delPlate').value='';$('adminPin').value='';dash()}catch(e){$('deleteResult').textContent='❌ '+e.message;$('deleteResult').className='result show err'}finally{b.disabled=false}};$('importBtn').onclick=importM;$('templateBtn').onclick=template;$('refreshCurrent').onclick=current;$('refreshAudit').onclick=audit;$('auditSearch').oninput=()=>{clearTimeout(window.__a);window.__a=setTimeout(audit,250)};$('backupBtn').onclick=backup;$('generateReport').onclick=report;$('exportReport').onclick=exportReport;$('printReport').onclick=printReport;$('rYear').value=new Date().getFullYear();
 (async()=>{if(await health())await dash()})();
