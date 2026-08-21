@@ -1,29 +1,18 @@
-VACS V6.1 — FINAL MASTER VEHICLES CONTRACT
+VACS V6.3 — FINAL TWO-SHEET EDITION
 
-THIS IS THE LOCKED VEHICLES SHEET FORMAT.
-It MUST contain exactly these six columns, in this order:
+ONLY TWO GOOGLE SHEETS ARE REQUIRED:
 
-1. Nama
-2. Nomor Kendaraan
-3. Bagian/Divisi
-4. Jenis Kendaraan
-5. Model
-6. Warna Kendaraan
+1) VEHICLES
+Exactly 6 columns:
+Nama
+Nomor Kendaraan
+Bagian/Divisi
+Jenis Kendaraan
+Model
+Warna Kendaraan
 
-No Owner ID.
-No Vehicle ID.
-No Employee ID.
-No technical master columns.
-
-VEHICLE LOOKUP:
-- Nomor Kendaraan is the lookup key.
-- A person can have unlimited vehicles; there is no hard-coded per-person vehicle limit.
-- Partial search remains supported by the web app.
-- The profile returned from a plate comes directly from the six VEHICLES fields.
-- Missing profile fields are allowed and can be completed later.
-
-OPERATIONAL LOG:
-The final visible log uses exactly:
+2) ACCESS_LOG
+Exactly 10 columns:
 Nama
 Nomor Kendaraan
 Bagian/Divisi
@@ -35,10 +24,22 @@ Jam Keluar
 Hari/Tanggal
 Keterangan
 
-Every IN -> OUT cycle is one row.
-The same person's Nama is vertically merged and centered for all their rows within the same day.
-ACCESS_HISTORY remains the raw audit history.
+All old helper sheets are NOT required.
+You may manually delete all other sheets.
 
-Do not mix this Code.gs with older versions.
-Replace Code.gs and index.html together in the existing Apps Script/GitHub project.
-Keep the same Spreadsheet and /exec URL.
+WEB APP:
+- DAFTAR KENDARAAN writes directly to VEHICLES.
+- Partial/full plate search reads VEHICLES.
+- Vehicle IN/OUT writes the operational log to ACCESS_LOG.
+- One IN -> OUT cycle = one row.
+- Same person's name is merged vertically and centered for all rows in the same day.
+- Multiple vehicles per person are supported without a hard-coded limit.
+- Unregistered plates are rejected.
+- Existing plate updates its VEHICLES row instead of creating a duplicate.
+- PDF/Excel report is generated from ACCESS_LOG.
+
+IMPORTANT:
+Delete all other Google Sheets tabs manually if desired.
+Keep only VEHICLES and ACCESS_LOG.
+Do not mix Code.gs with older versions.
+Deploy Code.gs + index.html together in the same Apps Script/GitHub project and keep the same Spreadsheet ID and /exec URL.

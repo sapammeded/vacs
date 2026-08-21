@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08111f">
-<title>VACS V6.1 — Vehicle Access Control System</title>
+<title>VACS V6.3 — Vehicle Access Control System</title>
 <style>
 :root{--bg:#eef2f7;--nav:#08111f;--card:#fff;--text:#162033;--muted:#6b778c;--line:#dce3ec;--green:#0f9d58;--red:#d93025;--blue:#1769e0;--orange:#b45f06}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,system-ui,sans-serif}
@@ -45,7 +45,7 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 
 <div class="grid">
 <div class="stat"><b id="vehicles">—</b><span>VEHICLES</span></div>
-<div class="stat"><b id="owners">—</b><span>OWNERS</span></div>
+<div class="stat"><b id="owners">—</b><span>VEHICLES</span></div>
 <div class="stat"><b id="todayIn">—</b><span>IN HARI INI</span></div>
 <div class="stat"><b id="denied">—</b><span>DENIED</span></div>
 </div>
@@ -71,7 +71,7 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 <div id="manualResult" class="result"></div>
 </div>
 <div class="card">
-<div class="label">IMPORT MASTER DATA</div><div class="hint"><b>Input langsung ke Spreadsheet:</b> data pemilik ada di <b>OWNERS</b>, kendaraan ada di <b>VEHICLES</b>. Namun operator tidak perlu mengisi Owner ID/Vehicle ID; gunakan Input Manual VACS untuk cara paling aman.</div><div class="hint"><b>Central Database:</b> semua device memakai Spreadsheet pusat yang sama. No Polisi dikenali sebagai kendaraan unik; data yang sudah ada akan di-update, bukan dibuat duplikat.</div>
+<div class="label">IMPORT MASTER DATA</div><div class="hint"><b>Input langsung ke Spreadsheet:</b> data pemilik ada di <b>VEHICLES</b>, kendaraan ada di <b>VEHICLES</b>. Namun operator tidak perlu mengisi Owner ID/Vehicle ID; gunakan Input Manual VACS untuk cara paling aman.</div><div class="hint"><b>Central Database:</b> semua device memakai Spreadsheet pusat yang sama. No Polisi dikenali sebagai kendaraan unik; data yang sudah ada akan di-update, bukan dibuat duplikat.</div>
 <div class="hint">Upload Excel (.xlsx/.xls) atau CSV. Sistem INSERT kendaraan baru dan UPDATE data yang sudah ada berdasarkan No Polisi. Owner dihubungkan otomatis berdasarkan Employee ID; jika Employee ID kosong, berdasarkan Nama.</div>
 <div class="drop"><input id="csvFile" type="file" accept=".csv,.xlsx,.xls,text/csv"><div class="actions" style="justify-content:center"><button id="importBtn" class="btn blue">📥 IMPORT / UPDATE MASTER</button></div></div>
 <div id="importResult" class="result"></div>
@@ -82,6 +82,21 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 </div>
 </section>
 
+
+<section id="registerPanel" class="panel">
+  <div class="label">DAFTAR KENDARAAN</div>
+  <div class="hint">Isi 6 data ini. Nomor Kendaraan menjadi kunci pencarian di Gate.</div>
+  <div class="grid2">
+    <label>Nama Pemilik<input id="regName" placeholder="Contoh: Apri"></label>
+    <label>Nomor Kendaraan<input id="regPlate" placeholder="Contoh: B 9856 FUX"></label>
+    <label>Bagian / Divisi<input id="regDivision" placeholder="Contoh: HSE"></label>
+    <label>Jenis Kendaraan<input id="regType" placeholder="Contoh: Mobil"></label>
+    <label>Model<input id="regModel" placeholder="Contoh: Fortuner"></label>
+    <label>Warna Kendaraan<input id="regColor" placeholder="Contoh: Hitam"></label>
+  </div>
+  <button class="btn green" id="saveVehicleBtn">💾 SIMPAN KENDARAAN</button>
+  <div id="registerResult" class="hint"></div>
+</section>
 <section id="report" class="panel">
 <div class="card">
 <div class="label">REPORT 1×24 JAM — SATU BARIS PER PEMILIK PER HARI</div>
@@ -105,7 +120,7 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-const GAS_API_URL="https://script.google.com/macros/s/AKfycbxNII17-IyGoMR076_CCgIR3s0X_gDZp52WHojTNXy7z18ZBGAbkc5lAt7Bpci3aNVc/exec";
+const GAS_API_URL="https://script.google.com/macros/s/AKfycbx-lNlGm4zfF4TWnb5Y3EoM6FL3KPLmlIke7JdvtKiTsYIcW24_UH2VY3WHdkrRj6yg/exec";
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 let selected=null,lastReport=null;
@@ -250,8 +265,8 @@ async function generateReport(){
 function exportReportCSV(){
  if(!lastReport){toast('Generate report dulu.');return}
  const rows=[['Tanggal','Nama Pemilik','Employee ID','Divisi','Jabatan','No Polisi','Riwayat IN/OUT 1x24 Jam','Jumlah IN','Jumlah OUT','First IN','Last OUT','Status 24H'],...(lastReport.grouped||[]).map(x=>[x.tanggal,x.nama,x.employeeId,x.divisi,x.jabatan,x.noPolisi,x.riwayat,x.jumlahIn,x.jumlahOut,x.firstIn,x.lastOut,x.status])];
- if(window.XLSX){const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:13},{wch:24},{wch:16},{wch:16},{wch:22},{wch:20},{wch:70},{wch:10},{wch:10},{wch:10},{wch:10},{wch:18}];XLSX.utils.book_append_sheet(wb,ws,'REPORT 24H');XLSX.writeFile(wb,`VACS_REPORT_24H_${$('rYear').value}_${$('rMonth').value}.xlsx`);}
- else{const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download=`VACS_REPORT_24H_${$('rYear').value}_${$('rMonth').value}.csv`;a.click();}
+ if(window.XLSX){const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:13},{wch:24},{wch:16},{wch:16},{wch:22},{wch:20},{wch:70},{wch:10},{wch:10},{wch:10},{wch:10},{wch:18}];XLSX.utils.book_append_sheet(wb,ws,'REPORT 24H');XLSX.writeFile(wb,`VACS_ACCESS_LOG_${$('rYear').value}_${$('rMonth').value}.xlsx`);}
+ else{const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download=`VACS_ACCESS_LOG_${$('rYear').value}_${$('rMonth').value}.csv`;a.click();}
 }
 function printReport(){
  if(!lastReport){toast('Generate report dulu.');return}const w=window.open('','_blank');if(!w){toast('Popup diblokir browser.');return}
@@ -264,6 +279,33 @@ if(b.dataset.tab==="report")health()});
 $("search").addEventListener("input",()=>{clearTimeout(window.__t);window.__t=setTimeout(searchVehicle,220)});
 $("inBtn").disabled=true;$("outBtn").disabled=true;$("inBtn").onclick=function(e){e.preventDefault();access("IN")};$("outBtn").onclick=function(e){e.preventDefault();access("OUT")};$("importBtn").onclick=importCSV;$("saveMasterBtn").onclick=saveMaster;$("clearMasterBtn").onclick=clearMaster;$("generateReport").onclick=generateReport;$("exportCsv").onclick=exportReportCSV;$("printReport").onclick=printReport;
 $("rYear").value=new Date().getFullYear();
+
+async function registerVehicle(){
+  const p={
+    action:'registerVehicle',
+    name:$('regName').value.trim(),
+    plate:$('regPlate').value.trim(),
+    division:$('regDivision').value.trim(),
+    type:$('regType').value.trim(),
+    model:$('regModel').value.trim(),
+    color:$('regColor').value.trim()
+  };
+  const out=$('registerResult'),btn=$('saveVehicleBtn');
+  if(!p.name||!p.plate){out.textContent='⚠️ Nama dan Nomor Kendaraan wajib diisi.';return}
+  btn.disabled=true;btn.textContent='⏳ MENYIMPAN...';
+  try{
+    const r=await apiRetry(p,15000,2);
+    if(!r||!r.ok)throw Error((r&&r.message)||'Gagal menyimpan kendaraan.');
+    out.textContent='✓ '+r.message;
+    ['regName','regPlate','regDivision','regType','regModel','regColor'].forEach(id=>$(id).value='');
+  }catch(e){out.textContent='❌ '+e.message}
+  finally{btn.disabled=false;btn.textContent='💾 SIMPAN KENDARAAN'}
+}
+
+
+const saveVehicleBtn=document.getElementById('saveVehicleBtn');
+if(saveVehicleBtn)saveVehicleBtn.onclick=registerVehicle;
+
 (async()=>{
   if(await health()){
     await dash();
