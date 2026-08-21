@@ -12,7 +12,7 @@ header{background:var(--nav);color:#fff;padding:24px 20px;position:sticky;top:0;
 main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflow:auto;margin-bottom:14px}.tab{white-space:nowrap;border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px 16px;font-weight:800}.tab.active{background:var(--blue);color:#fff}
 .panel{display:none}.panel.active{display:block}.card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:19px;margin-bottom:14px;box-shadow:0 10px 28px #16203310}.label{font-size:13px;font-weight:900;color:#66758b;margin-bottom:10px}.search{width:100%;height:66px;border:3px solid #cbd5e1;border-radius:19px;padding:0 19px;font-size:24px;font-weight:800;outline:0}.search:focus{border-color:var(--blue)}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{background:#fff;border:1px solid var(--line);border-radius:18px;padding:17px}.stat b{display:block;font-size:26px;margin-bottom:6px}.stat span{font-size:11px;font-weight:900;color:#68768b}
-.profile{display:none}.profile.show{display:block}.plate{font-size:29px;font-weight:900}.owner{font-size:22px;font-weight:800;margin-top:4px}.meta{color:var(--muted);line-height:1.5;margin-top:7px}.vehicle{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.btn{border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px 16px;font-weight:900}.green{background:var(--green);color:#fff}.red{background:var(--red);color:#fff}.blue{background:var(--blue);color:#fff}.orange{background:var(--orange);color:#fff}
+.profile{display:none}.profile.show{display:block}.plate{font-size:29px;font-weight:900}.owner{font-size:22px;font-weight:800;margin-top:4px}.meta{color:var(--muted);line-height:1.5;margin-top:7px}.vehicle{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.btn{border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px 16px;font-weight:900}.green{background:var(--green);color:#fff;cursor:pointer;pointer-events:auto}.red{background:var(--red);color:#fff;cursor:pointer;pointer-events:auto}.blue{background:var(--blue);color:#fff;cursor:pointer}.orange{background:var(--orange);color:#fff;cursor:pointer}.btn:disabled{opacity:.55;cursor:not-allowed}
 .result{display:none;padding:14px;border-radius:15px;margin-top:12px;font-weight:800}.result.show{display:block}.ok{background:#e9f7ef;color:#096b3b}.err{background:#fdecec;color:#9b1c1c}.hint{color:var(--muted);font-size:13px;margin-top:9px}.formgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.field label{display:block;font-size:12px;font-weight:900;color:var(--muted);margin-bottom:5px}.field input,.field select{width:100%;height:44px;border:1px solid var(--line);border-radius:11px;padding:0 10px;background:#fff}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:14px}.reporttable{width:100%;border-collapse:collapse;min-width:850px}.reporttable th,.reporttable td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:12px}.reporttable th{background:#f5f7fa;font-weight:900}.drop{border:2px dashed #cbd5e1;border-radius:17px;padding:22px;text-align:center}.drop input{max-width:100%}.empty{padding:22px;text-align:center;color:var(--muted);border:2px dashed #d6dde7;border-radius:17px}.toast{position:fixed;left:15px;right:15px;bottom:15px;z-index:20;padding:14px 16px;border-radius:15px;background:#111827;color:#fff;display:none;font-weight:800}.toast.show{display:block}
 @media(max-width:700px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr 1fr}h1{font-size:22px}.status{top:22px}.card{padding:16px}}
 </style>
@@ -91,7 +91,7 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 <div class="field"><label>ACTIVITY</label><select id="rActivity"><option value="ALL">IN + OUT</option><option value="IN">IN</option><option value="OUT">OUT</option></select></div>
 <div class="field"><label>GATE</label><input id="rGate" placeholder="ALL"></div>
 </div>
-<div class="actions"><button id="generateReport" class="btn blue">📊 GENERATE REPORT</button><button id="exportCsv" class="btn orange">⬇ EXPORT CSV</button><button id="printReport" class="btn">🖨 PRINT / PDF</button></div>
+<div class="actions"><button id="generateReport" class="btn blue">📊 GENERATE REPORT</button><button id="exportCsv" class="btn orange">⬇ EXPORT EXCEL</button><button id="printReport" class="btn">🖨 PRINT / PDF</button></div>
 </div>
 <div id="reportSummary" class="grid"></div>
 <div class="card"><div id="reportTable" class="empty">Pilih periode lalu Generate Report.</div></div>
@@ -105,7 +105,7 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-const GAS_API_URL="https://script.google.com/macros/s/AKfycby3PgBG5UlwIIjM_KQeRglORPW2O6bXdp4rcvpc_NxBkg8np_kXtou2Q6DAozlosNeU/exec";
+const GAS_API_URL="https://script.google.com/macros/s/AKfycbyr2p3E1C0PEnmcK2kei8_tJ7CRO32gSYh4K5yGhzrt8PVrTsscOOMb-GEi-N301OfB/exec";
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 let selected=null,lastReport=null;
@@ -131,20 +131,47 @@ function online(x){$("status").textContent=x?"● ONLINE":"● OFFLINE";$("statu
 async function health(){try{const r=await api({action:"health"});if(!r.ok)throw Error(r.message);online(true);return true}catch(e){online(false);return false}}
 async function dash(){try{const r=await api({action:"dashboard"});if(!r.ok)throw Error(r.message);$("vehicles").textContent=r.data.vehicles;$("owners").textContent=r.data.owners;$("todayIn").textContent=r.data.inToday;$("denied").textContent=r.data.deniedToday}catch(e){}}
 function showResult(t,c){$("result").textContent=t;$("result").className="result show "+c}
-function showProfile(v){selected=v;$("profile").classList.add("show");$("plate").textContent=v.plate||"—";$("owner").textContent=v.name||"-";$("meta").innerHTML=`${esc(v.division||"-")} • ${esc(v.position||"-")}<br>Employee ID: ${esc(v.employeeId||"-")} • ${esc(v.phone||"-")}`;$("vehicle").textContent=`${v.brand||"-"} ${v.model||"-"} • ${v.year||"-"} • ${v.color||"-"} • ${v.type||"-"}`}
+function showProfile(v){
+ selected=v||null;
+ $("profile").classList.toggle("show",!!selected);
+ $("inBtn").disabled=!selected;
+ $("outBtn").disabled=!selected;
+ $("inBtn").style.pointerEvents=selected?"auto":"none";
+ $("outBtn").style.pointerEvents=selected?"auto":"none";
+ $("plate").textContent=selected?.plate||"—";
+ $("owner").textContent=selected?.name||"Profil belum dilengkapi";
+ $("meta").innerHTML=selected?`${esc(selected.division||"Divisi belum diisi")} • ${esc(selected.position||"Jabatan belum diisi")}<br>Employee ID: ${esc(selected.employeeId||"Belum diisi")} • ${esc(selected.phone||"")}`:"—";
+ $("vehicle").textContent=selected?`${esc(selected.brand||"Merk belum diisi")} ${esc(selected.model||"")} • ${esc(selected.year||"")} • ${esc(selected.color||"")} • ${esc(selected.type||"Jenis belum diisi")}`:"—";
+}
 async function searchVehicle(){const q=$("search").value.trim();if(!q){$("profile").classList.remove("show");$("result").className="result";return}try{const r=await api({action:"search",q});if(!r.ok)throw Error(r.message);const a=r.data.found||[];if(!a.length){$("profile").classList.remove("show");showResult("🚫 KENDARAAN TIDAK TERDAFTAR — AKSES DITOLAK","err");return}showProfile(a.find(v=>norm(v.plate)===norm(q))||a[0]);showResult(a.length>1?"✓ Beberapa kendaraan ditemukan.":"✓ Kendaraan terdaftar.","ok");online(true)}catch(e){showResult("⚠️ "+e.message,"err");online(false)}}
-async function access(act){if(!selected)return;$("inBtn").disabled=true;$("outBtn").disabled=true;try{const r=await api({action:"access",plate:selected.plate,activity:act,gate:localStorage.vacs_gate||"Gate 1",officerId:localStorage.vacs_officer_id||"SEC-001",officerName:localStorage.vacs_officer_name||"Operator",deviceId});if(!r.ok)throw Error(r.message);showResult(`✓ ${act} berhasil dicatat • ${r.data.timestamp} WIB`,"ok");await dash()}catch(e){showResult("🚫 "+e.message,"err")}finally{$("inBtn").disabled=false;$("outBtn").disabled=false}}
-async function importCSV(){const f=$("csvFile").files[0];if(!f){toast("Pilih file CSV dulu.");return}if(f.size>900000){toast("CSV terlalu besar untuk mode ini. Pecah menjadi beberapa file.");return}const text=await f.text();$("importBtn").disabled=true;$("importResult").className="result show";$("importResult").textContent="Mengimport...";try{const r=await api({action:"importCSV",csv:text},30000);if(!r.ok)throw Error(r.message);$("importResult").className="result show ok";$("importResult").textContent=`✓ Selesai — Owner baru ${r.data.ownersInserted}, Owner update ${r.data.ownersUpdated}, Kendaraan baru ${r.data.vehiclesInserted}, Kendaraan update ${r.data.vehiclesUpdated}, dilewati ${r.data.skipped}`;toast("Master data berhasil diimport.");await dash()}catch(e){$("importResult").className="result show err";$("importResult").textContent="❌ "+e.message}finally{$("importBtn").disabled=false}}
-async function saveMaster(){
- const plate=$("mPlate").value.trim();
- if(!plate){$("manualResult").className="result show err";$("manualResult").textContent="❌ No Polisi wajib diisi.";return}
- const p={action:"saveMaster",plate,name:$("mName").value.trim(),employeeId:$("mEmp").value.trim(),division:$("mDiv").value.trim(),position:$("mPos").value.trim(),type:$("mType").value.trim(),brand:$("mBrand").value.trim(),model:$("mModel").value.trim(),year:$("mYear").value.trim(),color:$("mColor").value.trim()};
+async function access(act){
+ if(!selected||!selected.plate){
+   showResult("⚠️ Pilih kendaraan terdaftar terlebih dahulu.","err");
+   return;
+ }
+ $("inBtn").disabled=true;
+ $("outBtn").disabled=true;
  try{
-   const r=await api(p,30000);if(!r.ok)throw Error(r.message);
-   $("manualResult").className="result show ok";
-   $("manualResult").textContent=`✓ ${r.data.mode==="CREATED"?"Kendaraan didaftarkan":"Data kendaraan diperbarui"} — ${r.data.plate}`;
-   toast("Data master tersimpan."); await dash();
- }catch(e){$("manualResult").className="result show err";$("manualResult").textContent="❌ "+e.message}
+   const r=await api({
+     action:"access",
+     plate:selected.plate,
+     activity:act,
+     gate:localStorage.vacs_gate||"Gate 1",
+     officerId:localStorage.vacs_officer_id||"SEC-001",
+     officerName:localStorage.vacs_officer_name||"Operator",
+     deviceId:deviceId
+   });
+   if(!r.ok) throw Error(r.message);
+   showResult(`✓ ${act} berhasil dicatat • ${r.data.timestamp} WIB`,"ok");
+   await dash();
+ }catch(e){
+   showResult("🚫 "+e.message,"err");
+ }finally{
+   $("inBtn").disabled=!selected;
+   $("outBtn").disabled=!selected;
+   $("inBtn").style.pointerEvents=selected?"auto":"none";
+   $("outBtn").style.pointerEvents=selected?"auto":"none";
+ }
 }
 function clearMaster(){
  ["mName","mEmp","mPlate","mType","mDiv","mPos","mBrand","mModel","mYear","mColor"].forEach(id=>$(id).value="");
@@ -156,8 +183,17 @@ function printReport(){if(!lastReport){toast("Generate report dulu.");return}con
 async function current(){try{const r=await api({action:"current"},30000);if(!r.ok)throw Error(r.message);const a=r.data||[];$("currentList").className=a.length?"tablewrap":"empty";$("currentList").innerHTML=a.length?`<table class="reporttable"><thead><tr><th>No Polisi</th><th>Pemilik</th><th>Divisi</th><th>IN Time</th><th>Gate</th></tr></thead><tbody>${a.map(x=>`<tr><td><b>${esc(x.plate)}</b></td><td>${esc(x.name)}</td><td>${esc(x.division)}</td><td>${esc(x.timestamp)}</td><td>${esc(x.gate)}</td></tr>`).join("")}</tbody></table>`:"Tidak ada kendaraan yang sedang tercatat berada di dalam."}catch(e){$("currentList").textContent="Gagal memuat status."}}
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(b.dataset.tab).classList.add("active");if(b.dataset.tab==="current")current()});
 $("search").addEventListener("input",()=>{clearTimeout(window.__t);window.__t=setTimeout(searchVehicle,220)});
-$("inBtn").onclick=()=>access("IN");$("outBtn").onclick=()=>access("OUT");$("importBtn").onclick=importCSV;$("saveMasterBtn").onclick=saveMaster;$("clearMasterBtn").onclick=clearMaster;$("generateReport").onclick=generateReport;$("exportCsv").onclick=exportReportCSV;$("printReport").onclick=printReport;
+$("inBtn").disabled=true;$("outBtn").disabled=true;$("inBtn").onclick=function(e){e.preventDefault();access("IN")};$("outBtn").onclick=function(e){e.preventDefault();access("OUT")};$("importBtn").onclick=importCSV;$("saveMasterBtn").onclick=saveMaster;$("clearMasterBtn").onclick=clearMaster;$("generateReport").onclick=generateReport;$("exportCsv").onclick=exportReportCSV;$("printReport").onclick=printReport;
 $("rYear").value=new Date().getFullYear();
-(async()=>{if(await health())await dash()})();
+(async()=>{
+  if(await health()){
+    await dash();
+    try{
+      const d=await api({action:"diagnostics"});
+      if(!d.ok)throw Error(d.message);
+      if(!d.data.allRequiredSheetsPresent)toast("⚠️ Database belum lengkap.");
+    }catch(e){toast("⚠️ Diagnostics: "+e.message)}
+  }
+})();
 </script>
 </body></html>
