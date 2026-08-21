@@ -1,47 +1,38 @@
-# VACS V5.6 — FINAL ALL FEATURES READY DEPLOY
+VACS V5.8 — ACCESS_LOG NOW 1x24H
 
-This is the coordinated Code.gs + index.html pair for the existing VACS central system.
+IMPORTANT CHANGE REQUESTED BY OPERATOR
+ACCESS_LOG itself is now the 1x24h operational grouped view:
+- One person/owner + one calendar date = ONE ROW.
+- All IN/OUT cycles are stored in the same Riwayat IN/OUT cell.
+- Example: IN 10:35 | OUT 11:39 | IN 13:17 | OUT 17:00.
+- Multiple vehicles used by the same person that day are combined in the same row.
 
-## LOCKED REQUIREMENTS
-- One central Google Spreadsheet for ALL devices.
-- Existing Apps Script /exec endpoint remains the same.
+RAW HISTORY
+- ACCESS_HISTORY is the immutable/raw transaction ledger.
+- Every IN/OUT remains preserved there as one transaction per row.
+- This prevents loss of audit history while ACCESS_LOG remains the operator-friendly 1x24h view.
+
+MIGRATION
+- On first load, if ACCESS_LOG contains the old raw schema, its existing rows are copied to ACCESS_HISTORY.
+- ACCESS_LOG content is then replaced by the grouped 1x24h view.
+- Formatting, column widths, colors, borders, freeze settings are preserved because only cell contents are cleared.
+
+MASTER
+- OWNERS = owner profile.
+- VEHICLES = vehicle profile.
 - No Polisi is the only mandatory vehicle master field.
-- Name, Employee ID, Divisi, Jabatan, Jenis, Merk, Model, Tahun, Warna are optional.
-- Manual entry is supported from the VACS UI.
-- Profile can be completed later without changing existing IN/OUT history.
-- Existing No Polisi is recognized; same-owner import updates, not duplicates.
-- Different-owner duplicate is treated as an ownership conflict and is not silently overwritten.
-- Unregistered No Polisi is denied and logged to DENIED_LOG.
-- Partial search works (e.g. 98, FUX, B9856).
-- IN/OUT is written to the central ACCESS_LOG with server timestamp.
-- Multi-device writes are protected with Apps Script LockService.
-- Current Inside is based on the latest central IN/OUT state.
-- Import supports Excel .xlsx/.xls and CSV.
-- Report is grouped as ONE ROW PER PERSON PER DAY (1x24h operational report).
-- Multiple IN/OUT cycles in the same day are combined in one row.
-- Multiple vehicles used by the same person in that day are combined in the same row.
-- REPORT_24H is a generated data view.
-- Report can export Excel and Print/Save as PDF.
-- Spreadsheet layout remains administrator-owned: no automatic column resizing, formatting reset, freeze reset, or redesign.
+- All other profile fields are optional and can be completed later.
 
-## GOOGLE SHEET MASTER ENTRY
-- OWNERS = owner profile: Nama, Employee ID, Divisi, Jabatan, etc.
-- VEHICLES = vehicle profile: No Polisi, Owner ID, Merk, Model, Jenis, etc.
-- ACCESS_LOG = transaction history only.
-- DENIED_LOG = denied/unregistered attempts only.
-- USERS / SETTINGS = system support.
-- REPORT_24H = generated 1x24h report view.
+REAL TIME
+- IN/OUT writes to ACCESS_HISTORY.
+- ACCESS_LOG is rebuilt immediately.
+- REPORT_24H is also rebuilt.
+- Multi-device uses the same central Spreadsheet and Apps Script.
+- ScriptLock protects concurrent writes.
 
-For direct sheet entry, do not type transactions into ACCESS_LOG manually. The safest workflow is VACS > Input Manual, because the system generates Owner ID / Vehicle ID automatically.
-
-## DEPLOY
-1. Replace Code.gs in the EXISTING Apps Script project.
-2. Save.
-3. Deploy > Manage deployments > Edit > New version > Deploy.
-4. Keep the SAME /exec URL and SAME Spreadsheet.
-5. Replace index.html in the existing GitHub Pages repository.
-6. Commit.
-7. Reopen/refresh VACS.
-8. The status should become ONLINE. If it cannot reach the endpoint after retries, it shows OFFLINE with a visible error instead of hanging on CONNECTING.
-
-Do not mix these files with older V5.x versions.
+DEPLOY
+Replace Code.gs + index.html together in the EXISTING project.
+Apps Script: Save -> Manage deployments -> Edit -> New version -> Deploy.
+GitHub: replace index.html and commit.
+Keep the SAME Spreadsheet and SAME /exec URL.
+Do not mix with older versions.
