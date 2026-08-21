@@ -53,9 +53,27 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 
 <section id="master" class="panel">
 <div class="card">
+<div class="label">➕ INPUT / LENGKAPI DATA MANUAL</div>
+<div class="hint">Cukup isi <b>No Polisi</b>. Nama dan semua profil lain boleh kosong. Data dapat dilengkapi kapan saja tanpa mengganggu histori IN/OUT.</div>
+<div class="formgrid">
+<div class="field"><label>NAMA PEMILIK</label><input id="mName" placeholder="Optional"></div>
+<div class="field"><label>EMPLOYEE ID</label><input id="mEmp" placeholder="Optional"></div>
+<div class="field"><label>NO POLISI *</label><input id="mPlate" placeholder="B 9856 FUX"></div>
+<div class="field"><label>JENIS KENDARAAN</label><input id="mType" placeholder="Optional"></div>
+<div class="field"><label>DIVISI</label><input id="mDiv" placeholder="Optional"></div>
+<div class="field"><label>JABATAN</label><input id="mPos" placeholder="Optional"></div>
+<div class="field"><label>MERK</label><input id="mBrand" placeholder="Optional"></div>
+<div class="field"><label>MODEL</label><input id="mModel" placeholder="Optional"></div>
+<div class="field"><label>TAHUN</label><input id="mYear" placeholder="Optional"></div>
+<div class="field"><label>WARNA</label><input id="mColor" placeholder="Optional"></div>
+</div>
+<div class="actions"><button id="saveMasterBtn" class="btn green">💾 SIMPAN / UPDATE</button><button id="clearMasterBtn" class="btn">BERSIHKAN FORM</button></div>
+<div id="manualResult" class="result"></div>
+</div>
+<div class="card">
 <div class="label">IMPORT MASTER DATA</div><div class="hint"><b>Central Database:</b> semua device memakai Spreadsheet pusat yang sama. No Polisi dikenali sebagai kendaraan unik; data yang sudah ada akan di-update, bukan dibuat duplikat.</div>
-<div class="hint">Upload CSV. Sistem INSERT kendaraan baru dan UPDATE data yang sudah ada berdasarkan No Polisi. Owner dihubungkan otomatis berdasarkan Employee ID; jika Employee ID kosong, berdasarkan Nama.</div>
-<div class="drop"><input id="csvFile" type="file" accept=".csv,text/csv"><div class="actions" style="justify-content:center"><button id="importBtn" class="btn blue">📥 IMPORT / UPDATE MASTER</button></div></div>
+<div class="hint">Upload Excel (.xlsx/.xls) atau CSV. Sistem INSERT kendaraan baru dan UPDATE data yang sudah ada berdasarkan No Polisi. Owner dihubungkan otomatis berdasarkan Employee ID; jika Employee ID kosong, berdasarkan Nama.</div>
+<div class="drop"><input id="csvFile" type="file" accept=".csv,.xlsx,.xls,text/csv"><div class="actions" style="justify-content:center"><button id="importBtn" class="btn blue">📥 IMPORT / UPDATE MASTER</button></div></div>
 <div id="importResult" class="result"></div>
 </div>
 <div class="card">
@@ -85,8 +103,9 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 </main>
 <div id="toast" class="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-const GAS_API_URL="https://script.google.com/macros/s/AKfycbwZFxIx7OEK2sM3G71Dkhy3MwpsMNgfBSVhDbclw4nRByqvehz9n2kPNmiYN1ptswZm/exec";
+const GAS_API_URL="https://script.google.com/macros/s/AKfycby3PgBG5UlwIIjM_KQeRglORPW2O6bXdp4rcvpc_NxBkg8np_kXtou2Q6DAozlosNeU/exec";
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 let selected=null,lastReport=null;
@@ -116,13 +135,28 @@ function showProfile(v){selected=v;$("profile").classList.add("show");$("plate")
 async function searchVehicle(){const q=$("search").value.trim();if(!q){$("profile").classList.remove("show");$("result").className="result";return}try{const r=await api({action:"search",q});if(!r.ok)throw Error(r.message);const a=r.data.found||[];if(!a.length){$("profile").classList.remove("show");showResult("🚫 KENDARAAN TIDAK TERDAFTAR — AKSES DITOLAK","err");return}showProfile(a.find(v=>norm(v.plate)===norm(q))||a[0]);showResult(a.length>1?"✓ Beberapa kendaraan ditemukan.":"✓ Kendaraan terdaftar.","ok");online(true)}catch(e){showResult("⚠️ "+e.message,"err");online(false)}}
 async function access(act){if(!selected)return;$("inBtn").disabled=true;$("outBtn").disabled=true;try{const r=await api({action:"access",plate:selected.plate,activity:act,gate:localStorage.vacs_gate||"Gate 1",officerId:localStorage.vacs_officer_id||"SEC-001",officerName:localStorage.vacs_officer_name||"Operator",deviceId});if(!r.ok)throw Error(r.message);showResult(`✓ ${act} berhasil dicatat • ${r.data.timestamp} WIB`,"ok");await dash()}catch(e){showResult("🚫 "+e.message,"err")}finally{$("inBtn").disabled=false;$("outBtn").disabled=false}}
 async function importCSV(){const f=$("csvFile").files[0];if(!f){toast("Pilih file CSV dulu.");return}if(f.size>900000){toast("CSV terlalu besar untuk mode ini. Pecah menjadi beberapa file.");return}const text=await f.text();$("importBtn").disabled=true;$("importResult").className="result show";$("importResult").textContent="Mengimport...";try{const r=await api({action:"importCSV",csv:text},30000);if(!r.ok)throw Error(r.message);$("importResult").className="result show ok";$("importResult").textContent=`✓ Selesai — Owner baru ${r.data.ownersInserted}, Owner update ${r.data.ownersUpdated}, Kendaraan baru ${r.data.vehiclesInserted}, Kendaraan update ${r.data.vehiclesUpdated}, dilewati ${r.data.skipped}`;toast("Master data berhasil diimport.");await dash()}catch(e){$("importResult").className="result show err";$("importResult").textContent="❌ "+e.message}finally{$("importBtn").disabled=false}}
+async function saveMaster(){
+ const plate=$("mPlate").value.trim();
+ if(!plate){$("manualResult").className="result show err";$("manualResult").textContent="❌ No Polisi wajib diisi.";return}
+ const p={action:"saveMaster",plate,name:$("mName").value.trim(),employeeId:$("mEmp").value.trim(),division:$("mDiv").value.trim(),position:$("mPos").value.trim(),type:$("mType").value.trim(),brand:$("mBrand").value.trim(),model:$("mModel").value.trim(),year:$("mYear").value.trim(),color:$("mColor").value.trim()};
+ try{
+   const r=await api(p,30000);if(!r.ok)throw Error(r.message);
+   $("manualResult").className="result show ok";
+   $("manualResult").textContent=`✓ ${r.data.mode==="CREATED"?"Kendaraan didaftarkan":"Data kendaraan diperbarui"} — ${r.data.plate}`;
+   toast("Data master tersimpan."); await dash();
+ }catch(e){$("manualResult").className="result show err";$("manualResult").textContent="❌ "+e.message}
+}
+function clearMaster(){
+ ["mName","mEmp","mPlate","mType","mDiv","mPos","mBrand","mModel","mYear","mColor"].forEach(id=>$(id).value="");
+ $("manualResult").className="result";
+}
 async function generateReport(){const year=$("rYear").value||new Date().getFullYear(),month=$("rMonth").value,activity=$("rActivity").value,gate=($("rGate").value||"ALL").trim().toUpperCase();try{const r=await api({action:"report",year,month,activity,gate},30000);if(!r.ok)throw Error(r.message);lastReport=r.data;const s=r.data.summary;$("reportSummary").innerHTML=`<div class="stat"><b>${s.total}</b><span>TOTAL</span></div><div class="stat"><b>${s.in}</b><span>IN</span></div><div class="stat"><b>${s.out}</b><span>OUT</span></div><div class="stat"><b>${s.denied}</b><span>DENIED</span></div>`;$("reportTable").className="tablewrap";$("reportTable").innerHTML=`<table class="reporttable"><thead><tr><th>Tanggal</th><th>Jam</th><th>No Polisi</th><th>Pemilik</th><th>Divisi</th><th>Activity</th><th>Gate</th><th>Officer</th></tr></thead><tbody>${r.data.logs.map(x=>`<tr><td>${esc(x["Tanggal"])}</td><td>${esc(x["Jam"])}</td><td><b>${esc(x["No Polisi"])}</b></td><td>${esc(x["Nama Pemilik"])}</td><td>${esc(x["Divisi"])}</td><td>${esc(x["Activity"])}</td><td>${esc(x["Gate"])}</td><td>${esc(x["Officer Name"])}</td></tr>`).join("")||'<tr><td colspan="8">Tidak ada transaksi.</td></tr>'}</tbody></table>`;toast("Report berhasil dibuat.")}catch(e){toast("Report gagal: "+e.message)}}
 function exportReportCSV(){if(!lastReport){toast("Generate report dulu.");return}const h=["Tanggal","Jam","No Polisi","Pemilik","Divisi","Jabatan","Activity","Gate","Officer","Device"];const rows=[h,...lastReport.logs.map(x=>[x["Tanggal"],x["Jam"],x["No Polisi"],x["Nama Pemilik"],x["Divisi"],x["Jabatan"],x["Activity"],x["Gate"],x["Officer Name"],x["Device ID"]])];const csv=rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}));a.download=`VACS_REPORT_${$("rYear").value}_${$("rMonth").value}.csv`;a.click();URL.revokeObjectURL(a.href)}
 function printReport(){if(!lastReport){toast("Generate report dulu.");return}const w=window.open("","_blank");if(!w){toast("Popup diblokir browser.");return}w.document.write(`<html><head><title>VACS Vehicle Access Report</title><style>body{font-family:Arial;padding:28px}h1{margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #bbb;padding:7px;font-size:11px;text-align:left}th{background:#eee}.sum{display:flex;gap:30px;margin-top:15px}</style></head><body><h1>VACS — VEHICLE ACCESS REPORT</h1><div>Periode: ${esc($("rYear").value)} / ${esc($("rMonth").value)}</div><div class="sum"><b>Total: ${lastReport.summary.total}</b><b>IN: ${lastReport.summary.in}</b><b>OUT: ${lastReport.summary.out}</b><b>Denied: ${lastReport.summary.denied}</b></div>${$("reportTable").innerHTML}</body></html>`);w.document.close();w.focus();w.print()}
 async function current(){try{const r=await api({action:"current"},30000);if(!r.ok)throw Error(r.message);const a=r.data||[];$("currentList").className=a.length?"tablewrap":"empty";$("currentList").innerHTML=a.length?`<table class="reporttable"><thead><tr><th>No Polisi</th><th>Pemilik</th><th>Divisi</th><th>IN Time</th><th>Gate</th></tr></thead><tbody>${a.map(x=>`<tr><td><b>${esc(x.plate)}</b></td><td>${esc(x.name)}</td><td>${esc(x.division)}</td><td>${esc(x.timestamp)}</td><td>${esc(x.gate)}</td></tr>`).join("")}</tbody></table>`:"Tidak ada kendaraan yang sedang tercatat berada di dalam."}catch(e){$("currentList").textContent="Gagal memuat status."}}
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(b.dataset.tab).classList.add("active");if(b.dataset.tab==="current")current()});
 $("search").addEventListener("input",()=>{clearTimeout(window.__t);window.__t=setTimeout(searchVehicle,220)});
-$("inBtn").onclick=()=>access("IN");$("outBtn").onclick=()=>access("OUT");$("importBtn").onclick=importCSV;$("generateReport").onclick=generateReport;$("exportCsv").onclick=exportReportCSV;$("printReport").onclick=printReport;
+$("inBtn").onclick=()=>access("IN");$("outBtn").onclick=()=>access("OUT");$("importBtn").onclick=importCSV;$("saveMasterBtn").onclick=saveMaster;$("clearMasterBtn").onclick=clearMaster;$("generateReport").onclick=generateReport;$("exportCsv").onclick=exportReportCSV;$("printReport").onclick=printReport;
 $("rYear").value=new Date().getFullYear();
 (async()=>{if(await health())await dash()})();
 </script>
