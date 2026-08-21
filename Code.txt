@@ -1,44 +1,127 @@
 /**
- * VACS V5 — CENTRAL MASTER / MULTI DEVICE
- * Spreadsheet layout is administrator-owned.
+ * VACS V6.4 — FINAL SIMPLE TWO-SHEET BACKEND
  *
- * Central Spreadsheet:
- * 1wFnASAShpQgFA4bMZE2PIH5ccKma66otpHNMjLZgyv4
+ * ONLY TWO SHEETS ARE USED:
+ * 1. VEHICLES
+ * 2. ACCESS_LOG
  *
- * This version adds:
- * - Master import/update from CSV text
- * - Monthly/yearly reporting
- * - Current vehicle status
- * - No column resizing or layout resets
+ * VEHICLES:
+ * Nama | Nomor Kendaraan | Bagian/Divisi | Jenis Kendaraan | Model | Warna Kendaraan
  *
- * NOTE:
- * Browser sends CSV text to Apps Script. Apps Script parses and writes
- * only data cells. Existing formatting/widths are not changed.
+ * ACCESS_LOG:
+ * Nama | Nomor Kendaraan | Bagian/Divisi | Jenis Kendaraan | Model | Warna Kendaraan |
+ * Jam Masuk | Jam Keluar | Hari/Tanggal | Keterangan
  */
 
 const CONFIG = {
   SPREADSHEET_ID: '1wFnASAShpQgFA4bMZE2PIH5ccKma66otpHNMjLZgyv4',
   TIMEZONE: 'Asia/Jakarta',
-  SHEETS:{VEHICLES:'VEHICLES',ACCESS_LOG:'ACCESS_LOG'}
+  VERSION: '6.5'
 };
 
-const HEADERS = {
-  VEHICLES:['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan'],
-  VEHICLES:['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan'],
-  ACCESS_LOG:['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan'],
-  ACCESS_LOG:['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan'],
-  ACCESS_LOG:['Denied ID','Server Timestamp','Tanggal','Jam','No Polisi','Gate','Officer ID','Officer Name','Device ID','Reason','Notes'],
-  USERS:['User ID','Nama','Role','Gate','PIN','Status','Updated At'],
-  SETTINGS:['Key','Value','Description'],
-  ACCESS_LOG:['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan']
-};
+const VEHICLE_HEADERS = [
+  'Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan'
+];
+
+const LOG_HEADERS = [
+  'Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan',
+  'Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan'
+];
+
+function db_(){ return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID); }
+
+function normalize_(v){
+  return String(v == null ? '' : v).toUpperCase().replace(/[^A-Z0-9]/g,'');
+}
+
+function now_(){
+  const d=new Date();
+  return {
+    timestamp:Utilities.formatDate(d,CONFIG.TIMEZONE,'yyyy-MM-dd HH:mm:ss'),
+    date:Utilities.formatDate(d,CONFIG.TIMEZONE,'dd/MM/yyyy'),
+    time:Utilities.formatDate(d,CONFIG.TIMEZONE,'HH:mm:ss'),
+    year:Number(Utilities.formatDate(d,CONFIG.TIMEZONE,'yyyy')),
+    month:Number(Utilities.formatDate(d,CONFIG.TIMEZONE,'MM')),
+    day:Number(Utilities.formatDate(d,CONFIG.TIMEZONE,'dd'))
+  };
+}
+
+/**
+ * IMPORTANT:
+ * Every time the API is called, the spreadsheet is automatically normalized.
+ * All tabs except VEHICLES and ACCESS_LOG are deleted automatically.
+ * No manual cleanup is required.
+ */
+function ensureDatabase_(){
+  const ss=db_();
+  let vehicles=ss.getSheetByName('VEHICLES');
+  let log=ss.getSheetByName('ACCESS_LOG');
+
+  // If a legacy Sheet1 is the only sheet, reuse it as VEHICLES.
+  if(!vehicles && ss.getSheets().length===1){
+    const only=ss.getSheets()[0];
+    if(only.getName()==='Sheet1') only.setName('VEHICLES');
+    vehicles=ss.getSheetByName('VEHICLES');
+  }
+
+  if(!vehicles) vehicles=ss.insertSheet('VEHICLES');
+  if(!log) log=ss.insertSheet('ACCESS_LOG');
+
+  // Delete every legacy/helper tab automatically.
+  ss.getSheets().slice().forEach(sh=>{
+    const n=sh.getName();
+    if(n!=='VEHICLES' && n!=='ACCESS_LOG'){
+      // Spreadsheet must always retain at least one sheet; two required sheets exist.
+      ss.deleteSheet(sh);
+    }
+  });
+
+  // Set exact headers. Do not resize columns or alter the user's widths.
+  vehicles.getRange(1,1,1,VEHICLE_HEADERS.length).setValues([VEHICLE_HEADERS]);
+  log.getRange(1,1,1,LOG_HEADERS.length).setValues([LOG_HEADERS]);
+
+  vehicles.setFrozenRows(1);
+  log.setFrozenRows(1);
+
+  return ss;
+}
+
+
+
+function setupHeadersOnly_(){
+  const ss=db_();
+  const v=ss.getSheetByName('VEHICLES');
+  const l=ss.getSheetByName('ACCESS_LOG');
+  if(!v || !l) return;
+  v.getRange(1,1,1,6).setValues([VEHICLE_HEADERS]);
+  l.getRange(1,1,1,10).setValues([LOG_HEADERS]);
+}
+function setupVACS(){
+  const ss=ensureDatabase_();
+  const v=ss.getSheetByName('VEHICLES');
+  const l=ss.getSheetByName('ACCESS_LOG');
+
+  v.getRange(1,1,1,6).setValues([VEHICLE_HEADERS]);
+  l.getRange(1,1,1,10).setValues([LOG_HEADERS]);
+
+  v.getRange(1,1,1,6).setFontWeight('bold');
+  l.getRange(1,1,1,10).setFontWeight('bold');
+
+  return {
+    ok:true,
+    message:'VACS siap. Hanya VEHICLES dan ACCESS_LOG yang digunakan.',
+    vehiclesHeaders:VEHICLE_HEADERS,
+    accessLogHeaders:LOG_HEADERS
+  };
+}
 
 function doGet(e){
   try{
     ensureDatabase_();
+    setupHeadersOnly_();
     const p=(e&&e.parameter)||{};
-    const data=route_(p.action||'health',p);
-    return response_(p.callback,{ok:true,data:data});
+    const result=route_(String(p.action||'health'),p);
+    return response_(p.callback,{ok:true,data:result});
   }catch(err){
     const p=(e&&e.parameter)||{};
     return response_(p.callback,{ok:false,message:String(err&&err.message||err)});
@@ -56,1019 +139,258 @@ function response_(callback,payload){
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function db_(){return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID)}
-
-
-function ensureVehiclesSchemaFinal_(){
-  const sh=database_().getSheetByName('VEHICLES');
-  const H=['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan'];
-  if(!sh)return;
-  const current=sh.getLastRow()>0?sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getValues()[0].map(String):[];
-  const exact=current.length===H.length && H.every((v,i)=>current[i]===v);
-  if(!exact)sh.getRange(1,1,1,H.length).setValues([H]);
-}
-
-
-function ensureTwoSheets_(){
-  const ss=SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const vehicleHeaders=['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan'];
-  const logHeaders=['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan'];
-  let v=ss.getSheetByName('VEHICLES');
-  if(!v)v=ss.insertSheet('VEHICLES');
-  let l=ss.getSheetByName('ACCESS_LOG');
-  if(!l)l=ss.insertSheet('ACCESS_LOG');
-  v.getRange(1,1,1,vehicleHeaders.length).setValues([vehicleHeaders]);
-  l.getRange(1,1,1,logHeaders.length).setValues([logHeaders]);
-  return ss;
-}
-
-function ensureDatabase_(){
-  ensureTwoSheets_();
-  ensureVehiclesSchemaFinal_();
-  const ss=db_();
-  let s1=ss.getSheetByName('Sheet1');
-
-  if(s1&&ss.getSheets().length===1&&s1.getLastRow()===0&&s1.getLastColumn()===0){
-    s1.setName('VEHICLES');
-    createHeadersOnly_(s1,HEADERS.VEHICLES);
-  }
-
-  Object.keys(CONFIG.SHEETS).forEach(function(k){
-    const name=CONFIG.SHEETS[k];
-    let sh=ss.getSheetByName(name);
-    if(!sh){
-      sh=ss.insertSheet(name);
-      createHeadersOnly_(sh,HEADERS[k]);
-    }
+function rows_(sheetName){
+  const sh=db_().getSheetByName(sheetName);
+  if(!sh || sh.getLastRow()<2) return [];
+  const values=sh.getRange(1,1,sh.getLastRow(),sh.getLastColumn()).getValues();
+  const headers=values[0].map(String);
+  return values.slice(1).map(r=>{
+    const o={};
+    headers.forEach((h,i)=>o[h]=r[i]);
+    return o;
   });
-
-  migrateAccessLogStructure_(ss);
-
-  const settings=ss.getSheetByName('SETTINGS');
-  if(settings.getLastRow()<2){
-    settings.getRange(2,1,7,3).setValues([
-      ['SITE_NAME','Vehicle Access Control Center','Nama site/perusahaan'],
-      ['TIMEZONE',CONFIG.TIMEZONE,'Timezone server'],
-      ['SYSTEM_VERSION','VACS V5.9','Versi sistem'],
-      ['ACCESS_RULE','REGISTERED_ONLY','Kendaraan tidak terdaftar ditolak'],
-      ['SEARCH_MODE','PARTIAL','Pencarian nomor polisi partial'],
-      ['CENTRAL_DATABASE',CONFIG.SPREADSHEET_ID,'Spreadsheet pusat VACS'],
-      ['DATABASE_STATUS','READY','Database siap']
-    ]);
-  }
-
-  SpreadsheetApp.flush();
-  return ss;
-}
-
-function createHeadersOnly_(sh,headers){
-  if(sh.getLastRow()===0&&sh.getLastColumn()===0){
-    sh.getRange(1,1,1,headers.length).setValues([headers]);
-    sh.setFrozenRows(1);
-  }
-}
-
-function setupVACS(){return {ok:true,message:'VACS database siap.',spreadsheetId:ensureDatabase_().getId()}}
-
-function sheet_(n){
-  let sh=db_().getSheetByName(n);
-  if(!sh){ensureDatabase_();sh=db_().getSheetByName(n)}
-  if(!sh)throw Error('Sheet '+n+' tidak tersedia.');
-  return sh;
-}
-
-function rows_(n){
-  const v=sheet_(n).getDataRange().getValues();
-  if(v.length<=1)return[];
-  const h=v[0];
-  return v.slice(1).filter(r=>r.some(x=>x!=='')).map(r=>{
-    const o={};h.forEach((x,i)=>o[x]=r[i]);return o;
-  });
-}
-
-function normalize_(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
-
-function now_(){
-  const d=new Date();
-  return {
-    timestamp:Utilities.formatDate(d,CONFIG.TIMEZONE,'yyyy-MM-dd HH:mm:ss'),
-    date:Utilities.formatDate(d,CONFIG.TIMEZONE,'dd/MM/yyyy'),
-    time:Utilities.formatDate(d,CONFIG.TIMEZONE,'HH:mm:ss')
-  };
-}
-
-function id_(p){
-  return p+'-'+Utilities.formatDate(new Date(),CONFIG.TIMEZONE,'yyyyMMddHHmmss')+'-'+Math.floor(Math.random()*100000);
-}
-
-function append_(sheetName,obj,headers){
-  sheet_(sheetName).appendRow(headers.map(h=>obj[h]===undefined?'':obj[h]));
 }
 
 function searchVehicle_(q){
-  q=normalize_(q);
-  if(!q)return{found:[]};
+  const query=normalize_(q);
+  if(!query) return {found:[]};
 
-  const owners=rows_('VEHICLES'),vehicles=rows_('VEHICLES'),map={};
-  owners.forEach(o=>map[String(o['Owner ID'])]=o);
+  const list=rows_('VEHICLES').map((v,i)=>({
+    row:i+2,
+    plate:String(v['Nomor Kendaraan']||'').trim(),
+    name:String(v['Nama']||'').trim(),
+    division:String(v['Bagian/Divisi']||'').trim(),
+    type:String(v['Jenis Kendaraan']||'').trim(),
+    model:String(v['Model']||'').trim(),
+    color:String(v['Warna Kendaraan']||'').trim()
+  })).filter(v=>{
+    const p=normalize_(v.plate), n=normalize_(v.name);
+    return p.indexOf(query)!==-1 || n.indexOf(query)!==-1;
+  }).slice(0,50);
 
-  return {found:vehicles
-    .filter(v=>String(v['Status']||'ACTIVE').toUpperCase()==='ACTIVE')
-    .map(v=>{
-      const o=map[String(v['Owner ID'])]||{};
-      return {
-        vehicleId:v['Vehicle ID']||'',plate:v['No Polisi']||'',ownerId:v['Owner ID']||'',
-        name:o['Nama']||'',employeeId:o['Employee ID']||'',division:o['Divisi']||'',
-        position:o['Jabatan']||'',phone:o['No HP']||'',email:o['Email']||'',
-        brand:v['Merk']||'',model:v['Model']||'',year:v['Tahun']||'',
-        color:v['Warna']||'',type:v['Jenis']||'',status:v['Status']||'ACTIVE'
-      };
-    })
-    .filter(v=>normalize_(v.plate).indexOf(q)!==-1||normalize_(v.name).indexOf(q)!==-1||normalize_(v.employeeId).indexOf(q)!==-1)
-    .slice(0,50)};
+  return {found:list};
 }
-
-
-function rebuildFinalVehicleLogbook_(ss){
-  const sh=ss.getSheetByName('ACCESS_LOG');
-  const hist=ss.getSheetByName('ACCESS_LOG');
-  if(!sh||!hist)return;
-
-  const H=HEADERS.ACCESS_LOG;
-  const data=hist.getDataRange().getValues();
-  if(data.length<2){
-    sh.getRange(1,1,1,10).setValues([['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan']]);
-    return;
-  }
-
-  const head=data[0].map(String), ix=n=>head.indexOf(n);
-  const vehicles=rows_('VEHICLES');
-  const vm={};
-  vehicles.forEach(v=>{
-    const p=normalize_(v['Nomor Kendaraan']);
-    if(p)vm[p]=v;
-  });
-
-  const groups={};
-  data.slice(1).forEach(r=>{
-    const date=String(r[ix('Tanggal')]||'').trim();
-    const plate=String(r[ix('No Polisi')]||'').trim();
-    const act=String(r[ix('Activity')]||'').toUpperCase().trim();
-    if(!date||!plate||!act)return;
-
-    const v=vm[normalize_(plate)]||{};
-    const name=String(v['Nama']||r[ix('Nama Pemilik')]||'Belum diisi').trim();
-    const key=date+'|'+normalize_(name||plate);
-
-    if(!groups[key])groups[key]={
-      name,
-      div:String(v['Bagian/Divisi']||r[ix('Divisi')]||''),
-      type:String(v['Jenis Kendaraan']||r[ix('Jenis')]||''),
-      model:String(v['Model']||r[ix('Model')]||''),
-      color:String(v['Warna Kendaraan']||r[ix('Warna')]||''),
-      date,events:[]
-    };
-    const g=groups[key];
-    g.events.push({act,time:String(r[ix('Jam')]||''),plate,note:String(ix('Keterangan')>=0?r[ix('Keterangan')]||'':'')});
-  });
-
-  const rows=[];
-  Object.values(groups).forEach(g=>{
-    g.events.sort((a,b)=>String(a.time).localeCompare(String(b.time)));
-    let pending=null;
-    g.events.forEach(e=>{
-      if(e.act==='IN'){
-        if(pending)rows.push([g.name,pending.plate,g.div,g.type,g.model,g.color,pending.time,'',g.date,pending.note||'MASIH DI DALAM']);
-        pending=e;
-      }else if(e.act==='OUT'){
-        if(pending){
-          rows.push([g.name,pending.plate,g.div,g.type,g.model,g.color,pending.time,e.time,g.date,e.note||'']);
-          pending=null;
-        }else rows.push([g.name,e.plate,g.div,g.type,g.model,g.color,'',e.time,g.date,e.note||'OUT tanpa IN']);
-      }
-    });
-    if(pending)rows.push([g.name,pending.plate,g.div,g.type,g.model,g.color,pending.time,'',g.date,pending.note||'MASIH DI DALAM']);
-  });
-
-  // Content only. Manual widths/formatting/freeze are untouched.
-  sh.getRange(1,1,Math.max(1,sh.getMaxRows()),Math.max(10,sh.getMaxColumns())).clearContent();
-  sh.getRange(1,1,1,10).setValues([['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan']]);
-  if(rows.length)sh.getRange(2,1,rows.length,10).setValues(rows);
-
-  // Merge Name vertically for each person/day group.
-  let r=2;
-  while(r<rows.length+2){
-    const name=rows[r-2][0], date=rows[r-2][8];
-    let e=r+1;
-    while(e<rows.length+2 && rows[e-2][0]===name && rows[e-2][8]===date)e++;
-    if(e-r>1)sh.getRange(r,1,e-r,1).mergeVertically();
-    sh.getRange(r,1,e-r,1).setVerticalAlignment('middle').setHorizontalAlignment('center');
-    r=e;
-  }
-}
-
-function migrateAccessLogStructure_(ss){
-
-  const logSh=ss.getSheetByName('ACCESS_LOG');
-  const histSh=ss.getSheetByName('ACCESS_LOG');
-  if(!logSh||!histSh)return;
-
-  const oldHeaders=HEADERS.ACCESS_LOG;
-  const groupedHeaders=HEADERS.ACCESS_LOG;
-  const logLastRow=logSh.getLastRow();
-  const logLastCol=Math.max(1,logSh.getLastColumn());
-  const first=logLastRow>0
-    ? logSh.getRange(1,1,1,logLastCol).getValues()[0].map(String)
-    : [];
-
-  // Old schema = raw transaction columns (Log ID + Activity).
-  // Copy ALL missing raw rows into ACCESS_LOG, even when history already
-  // contains some rows. This makes the migration idempotent and prevents loss.
-  const isOldRaw=first.indexOf('Log ID')>=0 && first.indexOf('Activity')>=0;
-
-  if(isOldRaw && logLastRow>1){
-    const raw=logSh.getRange(1,1,logLastRow,Math.min(logLastCol,oldHeaders.length)).getValues();
-    const existingIds={};
-    const hv=histSh.getDataRange().getValues();
-    const hi=hv.length?hv[0].map(String):oldHeaders;
-    const idIdx=hi.indexOf('Log ID');
-    if(idIdx>=0){
-      hv.slice(1).forEach(r=>{
-        const id=String(r[idIdx]||'').trim();
-        if(id)existingIds[id]=true;
-      });
-    }
-
-    const body=raw.slice(1).filter(r=>{
-      const id=String(r[oldHeaders.indexOf('Log ID')]||'').trim();
-      return id && !existingIds[id];
-    });
-
-    if(histSh.getLastRow()===0){
-      histSh.getRange(1,1,1,oldHeaders.length).setValues([oldHeaders]);
-    }
-    if(body.length){
-      histSh.getRange(histSh.getLastRow()+1,1,body.length,oldHeaders.length).setValues(body);
-    }
-  }
-
-  // Force ACCESS_LOG to the intended 1x24h operational schema.
-  // clearContent changes values only; it does NOT alter width, colors, borders,
-  // number formats, frozen rows, filters, or other manual layout settings.
-  const maxRows=Math.max(1,logSh.getMaxRows());
-  const maxCols=Math.max(groupedHeaders.length,logSh.getMaxColumns());
-  logSh.getRange(1,1,maxRows,maxCols).clearContent();
-  logSh.getRange(1,1,1,groupedHeaders.length).setValues([groupedHeaders]);
-
-  // Rebuild from the preserved raw history.
-    rebuildFinalVehicleLogbook_(ss);
-}
-
-
-function rebuildAccessLog24h_(ss){
-  const hist=ss.getSheetByName('ACCESS_LOG');
-  const out=ss.getSheetByName('ACCESS_LOG');
-  if(!hist||!out)return;
-
-  const hv=hist.getDataRange().getValues();
-  if(hv.length<2){
-    out.getRange(2,1,Math.max(1,out.getMaxRows()-1),HEADERS.ACCESS_LOG.length).clearContent();
-    return;
-  }
-
-  const headers=hv[0].map(String);
-  const ix=h=>headers.indexOf(h);
-  const groups={};
-
-  hv.slice(1).forEach(function(r){
-    const date=String(r[ix('Tanggal')]||'').trim();
-    const name=String(r[ix('Nama Pemilik')]||'').trim()||'Belum diisi';
-    const owner=String(r[ix('Owner ID')]||'').trim();
-    const emp=String(r[ix('Employee ID')]||'').trim();
-    const plate=String(r[ix('No Polisi')]||'').trim();
-    const identity=owner||emp||normalize_(name)||('PLATE-'+normalize_(plate));
-    if(!date||!plate)return;
-    const key=date+'|'+identity;
-    if(!groups[key]){
-      groups[key]={date,name,employeeId:emp,division:String(r[ix('Divisi')]||''),position:String(r[ix('Jabatan')]||''),
-        plates:{},types:{},events:[],ins:0,outs:0,firstIn:'',lastOut:'',updated:''};
-    }
-    const g=groups[key];
-    if(name&&g.name==='Belum diisi')g.name=name;
-    if(emp&&!g.employeeId)g.employeeId=emp;
-    if(!g.division)g.division=String(r[ix('Divisi')]||'');
-    if(!g.position)g.position=String(r[ix('Jabatan')]||'');
-    g.plates[plate]=true;
-    const act=String(r[ix('Activity')]||'').toUpperCase();
-    const time=String(r[ix('Jam')]||'');
-    const ts=String(r[ix('Server Timestamp')]||'');
-    if(act==='IN'){g.ins++;if(!g.firstIn)g.firstIn=time}
-    if(act==='OUT'){g.outs++;g.lastOut=time}
-    g.events.push({act,time,plate,gate:String(r[ix('Gate')]||''),ts});
-    if(ts>g.updated)g.updated=ts;
-  });
-
-  const vehicleValues=ss.getSheetByName('VEHICLES').getDataRange().getValues();
-  const vh=vehicleValues.length?vehicleValues[0].map(String):[];
-  const plateType={};
-  if(vehicleValues.length>1){
-    const pi=vh.indexOf('No Polisi'), ti=vh.indexOf('Jenis');
-    vehicleValues.slice(1).forEach(r=>{if(pi>=0&&ti>=0&&r[pi])plateType[normalize_(r[pi])]=String(r[ti]||'')});
-  }
-
-  const values=Object.values(groups).sort((a,b)=>(a.date+a.name).localeCompare(b.date+b.name)).map(g=>{
-    const plates=Object.keys(g.plates);
-    const types=[...new Set(plates.map(p=>plateType[normalize_(p)]).filter(Boolean))];
-    const history=g.events.sort((a,b)=>a.ts.localeCompare(b.ts)).map(e=>e.act+' '+e.time+' ['+e.plate+']').join('  |  ');
-    const status=g.ins>g.outs?'MASIH DI DALAM':(g.ins===g.outs?'SELESAI':'OUT TANPA IN');
-    return [g.date,g.name,g.employeeId,g.division,g.position,plates.join(', '),types.join(', '),history,g.ins,g.outs,g.firstIn,g.lastOut,status,g.updated||now_().timestamp];
-  });
-
-  if(out.getMaxRows()>1)out.getRange(2,1,out.getMaxRows()-1,HEADERS.ACCESS_LOG.length).clearContent();
-  if(values.length)out.getRange(2,1,values.length,HEADERS.ACCESS_LOG.length).setValues(values);
-}
-
-function recordAccess_(p){
-  const plate=String(p.plate||'').trim(),act=String(p.activity||'').toUpperCase();
-  if(!plate)throw Error('Nomor polisi kosong.');
-  if(['IN','OUT'].indexOf(act)<0)throw Error('Activity harus IN atau OUT.');
-
-  const f=searchVehicle_(plate).found;
-  const v=f.find(x=>normalize_(x.plate)===normalize_(plate));
-  const n=now_(),gate=p.gate||'Gate 1',oid=p.officerId||'SEC-001',on=p.officerName||'Operator',did=p.deviceId||'WEB-DEVICE';
-
-  if(!v){
-    append_('ACCESS_LOG',{
-      'Denied ID':id_('DEN'),'Server Timestamp':n.timestamp,'Tanggal':n.date,'Jam':n.time,
-      'No Polisi':plate.toUpperCase(),'Gate':gate,'Officer ID':oid,'Officer Name':on,
-      'Device ID':did,'Reason':'NOT_REGISTERED','Notes':p.notes||''
-    },HEADERS.ACCESS_LOG);
-    throw Error('KENDARAAN TIDAK TERDAFTAR — AKSES DITOLAK.');
-  }
-
-  const lock=LockService.getScriptLock();lock.waitLock(15000);
-  try{
-    append_('ACCESS_LOG',{
-      'Log ID':id_('LOG'),'Server Timestamp':n.timestamp,'Tanggal':n.date,'Jam':n.time,
-      'No Polisi':v.plate,'Owner ID':v.ownerId,'Nama Pemilik':v.name,'Employee ID':v.employeeId,
-      'Divisi':v.division,'Jabatan':v.position,'Activity':act,'Gate':gate,
-      'Officer ID':oid,'Officer Name':on,'Device ID':did,'Notes':p.notes||''
-    },HEADERS.ACCESS_LOG);
-    rebuildAccessLog24h_(db_());
-  }finally{lock.releaseLock()}
-
-  // Keep ACCESS_LOG synchronized automatically after every real-time transaction.
-  // This does not touch ACCESS_LOG history and does not resize/reformat the sheet.
-  try{
-    report24h_({
-      year:Number(String(n.date).split('/')[2]),
-      month:Number(String(n.date).split('/')[1]),
-      day:Number(String(n.date).split('/')[0]),
-      gate:'ALL',
-      activity:'ALL'
-    });
-  }catch(reportErr){
-    // Transaction must remain successful even if report-view refresh fails.
-    console.log('ACCESS_LOG refresh skipped: '+reportErr.message);
-  }
-
-  try{rebuildFinalVehicleLogbook_(database_());}catch(e){console.log('logbook rebuild: '+e.message)}
-  return{success:true,vehicle:v,activity:act,timestamp:n.timestamp,gate:gate};
-}
-
-/* ---------- IMPORT MASTER DATA ---------- */
-
-function csvParse_(text){
-  const rows=[],row=[];
-  let cell='',quote=false;
-
-  for(let i=0;i<text.length;i++){
-    const c=text[i],next=text[i+1];
-
-    if(c==='"'){
-      if(quote&&next==='"'){cell+='"';i++}
-      else quote=!quote;
-    }else if(c===','&&!quote){
-      row.push(cell);cell='';
-    }else if((c==='\n'||c==='\r')&&!quote){
-      if(c==='\r'&&next==='\n')i++;
-      row.push(cell);cell='';
-      if(row.some(x=>String(x).trim()!==''))rows.push(row.splice(0,row.length));
-    }else{
-      cell+=c;
-    }
-  }
-  if(cell!==''||row.length){row.push(cell);if(row.some(x=>String(x).trim()!==''))rows.push(row)}
-  return rows;
-}
-
-function cleanHeader_(s){
-  return String(s||'').trim().toLowerCase()
-    .replace(/[._-]/g,' ')
-    .replace(/\s+/g,' ');
-}
-
-function findHeader_(headers,names){
-  const normalized=headers.map(cleanHeader_);
-  for(const n of names){
-    const idx=normalized.indexOf(cleanHeader_(n));
-    if(idx>=0)return idx;
-  }
-  return -1;
-}
-
-function importMasterCSV_(csvText){
-  if(!csvText)throw Error('File CSV kosong.');
-
-  const matrix=csvParse_(csvText);
-  if(matrix.length<2)throw Error('CSV belum memiliki data.');
-
-  const rawHeaders=matrix[0];
-  const iPlate=findHeader_(rawHeaders,['No Polisi','Nomor Polisi','Nopol','Plate']);
-  const iName=findHeader_(rawHeaders,['Nama','Nama Pemilik','Owner']);
-  const iEmp=findHeader_(rawHeaders,['Employee ID','NIK','ID Karyawan']);
-  const iDiv=findHeader_(rawHeaders,['Divisi','Division','Departemen','Department']);
-  const iPos=findHeader_(rawHeaders,['Jabatan','Position']);
-  const iPhone=findHeader_(rawHeaders,['No HP','HP','Phone']);
-  const iEmail=findHeader_(rawHeaders,['Email']);
-  const iBrand=findHeader_(rawHeaders,['Merk','Brand']);
-  const iModel=findHeader_(rawHeaders,['Model','Tipe']);
-  const iYear=findHeader_(rawHeaders,['Tahun','Year']);
-  const iColor=findHeader_(rawHeaders,['Warna','Color']);
-  const iType=findHeader_(rawHeaders,['Jenis','Type']);
-
-  if(iPlate<0)throw Error('Kolom No Polisi wajib ada.');
-  // Nama, Employee ID, Divisi, Jabatan, dan detail kendaraan bersifat OPTIONAL.
-
-
-  const ownerSh=sheet_('VEHICLES'),vehicleSh=sheet_('VEHICLES');
-  const ownerValues=ownerSh.getDataRange().getValues();
-  const vehicleValues=vehicleSh.getDataRange().getValues();
-  const oh=ownerValues[0],vh=vehicleValues[0];
-
-  const ownerIdCol=oh.indexOf('Owner ID'), ownerNameCol=oh.indexOf('Nama'), ownerEmpCol=oh.indexOf('Employee ID');
-  const vehicleIdCol=vh.indexOf('Vehicle ID'), vehiclePlateCol=vh.indexOf('No Polisi');
-
-  const ownerByKey={},vehicleByPlate={};
-
-  for(let r=1;r<ownerValues.length;r++){
-    const key=normalize_(ownerValues[r][ownerEmpCol]||ownerValues[r][ownerNameCol]);
-    if(key)ownerByKey[key]={row:r+1,id:ownerValues[r][ownerIdCol]};
-  }
-
-  for(let r=1;r<vehicleValues.length;r++){
-    const key=normalize_(vehicleValues[r][vehiclePlateCol]);
-    if(key)vehicleByPlate[key]={row:r+1};
-  }
-
-  let ownerInserted=0,ownerUpdated=0,vehicleInserted=0,vehicleUpdated=0,skipped=0,duplicateSameOwner=0,ownershipConflicts=0;
-  const updatesOwners=[],updatesVehicles=[];
-
-  matrix.slice(1).forEach(function(r,idx){
-    const plate=String(r[iPlate]||'').trim();
-    const name=iName>=0?String(r[iName]||'').trim():'';
-    if(!plate){skipped++;return}
-
-    const emp=iEmp>=0?String(r[iEmp]||'').trim():'';
-    const ownerKey=normalize_(emp||name||('PLATE-'+normalize_(plate)));
-    let owner=ownerByKey[ownerKey];
-
-    if(!owner){
-      const ownerId=id_('OWN');
-      owner={
-        row:null,
-        id:ownerId
-      };
-
-      const newRow=new Array(oh.length).fill('');
-      newRow[ownerIdCol]=ownerId;
-      newRow[ownerNameCol]=name;
-      if(ownerEmpCol>=0)newRow[ownerEmpCol]=emp;
-      const put=(h,names,val)=>{
-        const i=findHeader_(oh,names);
-        if(i>=0)newRow[i]=val;
-      };
-      put(oh,['Divisi','Division'],iDiv>=0?r[iDiv]:'');
-      put(oh,['Jabatan','Position'],iPos>=0?r[iPos]:'');
-      put(oh,['No HP','HP','Phone'],iPhone>=0?r[iPhone]:'');
-      put(oh,['Email'],iEmail>=0?r[iEmail]:'');
-      put(oh,['Status'],'ACTIVE');
-      put(oh,['Updated At'],now_().timestamp);
-
-      ownerSh.appendRow(newRow);
-      owner.row=ownerSh.getLastRow();
-      ownerByKey[ownerKey]=owner;
-      ownerInserted++;
-    }else{
-      const rowNum=owner.row;
-      const current=ownerSh.getRange(rowNum,1,1,oh.length).getValues()[0];
-      const set=(names,val)=>{
-        const i=findHeader_(oh,names);
-        if(i>=0&&val!==undefined&&val!=='')current[i]=val;
-      };
-      set(['Nama'],name);
-      set(['Employee ID'],emp);
-      set(['Divisi','Division'],iDiv>=0?r[iDiv]:'');
-      set(['Jabatan','Position'],iPos>=0?r[iPos]:'');
-      set(['No HP','HP','Phone'],iPhone>=0?r[iPhone]:'');
-      set(['Email'],iEmail>=0?r[iEmail]:'');
-      set(['Status'],'ACTIVE');
-      set(['Updated At'],now_().timestamp);
-      updatesOwners.push({row:rowNum,values:current});
-      ownerUpdated++;
-    }
-
-    const plateKey=normalize_(plate);
-    const existing=vehicleByPlate[plateKey];
-
-    if(existing){
-      const current=vehicleSh.getRange(existing.row,1,1,vh.length).getValues()[0];
-      const existingOwnerId=String(current[vh.indexOf('Owner ID')]||'');
-      if(existingOwnerId && owner.id && existingOwnerId !== String(owner.id)){
-        ownershipConflicts++;
-        skipped++;
-        return;
-      }
-      duplicateSameOwner++;
-      const set=(names,val)=>{
-        const i=findHeader_(vh,names);
-        if(i>=0&&val!==undefined&&val!=='')current[i]=val;
-      };
-      set(['Owner ID'],owner.id);
-      set(['Merk','Brand'],iBrand>=0?r[iBrand]:'');
-      set(['Model','Tipe'],iModel>=0?r[iModel]:'');
-      set(['Tahun','Year'],iYear>=0?r[iYear]:'');
-      set(['Warna','Color'],iColor>=0?r[iColor]:'');
-      set(['Jenis','Type'],iType>=0?r[iType]:'');
-      set(['Status'],'ACTIVE');
-      set(['Updated At'],now_().timestamp);
-      updatesVehicles.push({row:existing.row,values:current});
-      vehicleUpdated++;
-    }else{
-      const newRow=new Array(vh.length).fill('');
-      newRow[vehicleIdCol]=id_('VH');
-      newRow[vehiclePlateCol]=plate.toUpperCase();
-      const set=(names,val)=>{
-        const i=findHeader_(vh,names);
-        if(i>=0)newRow[i]=val;
-      };
-      set(['Owner ID'],owner.id);
-      set(['Merk','Brand'],iBrand>=0?r[iBrand]:'');
-      set(['Model','Tipe'],iModel>=0?r[iModel]:'');
-      set(['Tahun','Year'],iYear>=0?r[iYear]:'');
-      set(['Warna','Color'],iColor>=0?r[iColor]:'');
-      set(['Jenis','Type'],iType>=0?r[iType]:'');
-      set(['Status'],'ACTIVE');
-      set(['Updated At'],now_().timestamp);
-      vehicleSh.appendRow(newRow);
-      vehicleByPlate[plateKey]={row:vehicleSh.getLastRow()};
-      vehicleInserted++;
-    }
-  });
-
-  updatesOwners.forEach(x=>ownerSh.getRange(x.row,1,1,oh.length).setValues([x.values]));
-  updatesVehicles.forEach(x=>vehicleSh.getRange(x.row,1,1,vh.length).setValues([x.values]));
-
-  return {
-    success:true,
-    ownersInserted:ownerInserted,
-    ownersUpdated:ownerUpdated,
-    vehiclesInserted:vehicleInserted,
-    vehiclesUpdated:vehicleUpdated,
-    duplicateSameOwner:duplicateSameOwner,
-    ownershipConflicts:ownershipConflicts,
-    skipped:skipped
-  };
-}
-
-
-/* ---------- MANUAL MASTER DATA ---------- */
-
-function saveMasterManual_(p){
-  const plate=String(p.plate||'').trim();
-  if(!plate) throw Error('No Polisi wajib diisi.');
-
-  const ownerSh=sheet_('VEHICLES'), vehicleSh=sheet_('VEHICLES');
-  const oh=ownerSh.getDataRange().getValues()[0];
-  const vh=vehicleSh.getDataRange().getValues()[0];
-  const ov=ownerSh.getDataRange().getValues();
-  const vv=vehicleSh.getDataRange().getValues();
-
-  const plateKey=normalize_(plate);
-  let ownerId='';
-  const emp=String(p.employeeId||'').trim();
-  const name=String(p.name||'').trim();
-
-  // Find owner by Employee ID first, then Name.
-  for(let r=1;r<ov.length;r++){
-    const o={};oh.forEach((h,i)=>o[h]=ov[r][i]);
-    if((emp && normalize_(o['Employee ID'])===normalize_(emp)) ||
-       (!emp && name && normalize_(o['Nama'])===normalize_(name))){
-      ownerId=o['Owner ID']; break;
-    }
-  }
-
-  // Existing vehicle by plate.
-  let vehicleRow=-1;
-  for(let r=1;r<vv.length;r++){
-    if(normalize_(vv[r][vh.indexOf('No Polisi')])===plateKey){vehicleRow=r+1;ownerId=vv[r][vh.indexOf('Owner ID')]||ownerId;break;}
-  }
-
-  if(!ownerId){
-    ownerId=id_('OWN');
-    const row=new Array(oh.length).fill('');
-    const put=(h,v)=>{const i=oh.indexOf(h);if(i>=0)row[i]=v};
-    put('Owner ID',ownerId); put('Nama',name); put('Employee ID',emp);
-    put('Divisi',p.division||''); put('Jabatan',p.position||'');
-    put('No HP',p.phone||''); put('Email',p.email||''); put('Status','ACTIVE');
-    put('Catatan',p.ownerNotes||''); put('Updated At',now_().timestamp);
-    ownerSh.appendRow(row);
-  }else{
-    // Fill only fields supplied: later enrichment never wipes existing profile.
-    const rowNum=(function(){
-      for(let r=1;r<ov.length;r++){
-        if(String(ov[r][oh.indexOf('Owner ID')])===String(ownerId)) return r+1;
-      }
-      return -1;
-    })();
-    if(rowNum>1){
-      const row=ownerSh.getRange(rowNum,1,1,oh.length).getValues()[0];
-      const set=(h,v)=>{const i=oh.indexOf(h);if(i>=0&&String(v??'').trim()!=='')row[i]=v};
-      set('Nama',name);set('Employee ID',emp);set('Divisi',p.division);
-      set('Jabatan',p.position);set('No HP',p.phone);set('Email',p.email);
-      set('Catatan',p.ownerNotes);set('Status','ACTIVE');set('Updated At',now_().timestamp);
-      ownerSh.getRange(rowNum,1,1,oh.length).setValues([row]);
-    }
-  }
-
-  if(vehicleRow<0){
-    const row=new Array(vh.length).fill('');
-    const put=(h,v)=>{const i=vh.indexOf(h);if(i>=0)row[i]=v};
-    put('Vehicle ID',id_('VH'));put('No Polisi',plate.toUpperCase());put('Owner ID',ownerId);
-    put('Merk',p.brand||'');put('Model',p.model||'');put('Tahun',p.year||'');
-    put('Warna',p.color||'');put('Jenis',p.type||'');put('Status','ACTIVE');
-    put('Catatan',p.vehicleNotes||'');put('Updated At',now_().timestamp);
-    vehicleSh.appendRow(row);
-    return {success:true,mode:'CREATED',plate:plate.toUpperCase(),ownerId:ownerId};
-  }else{
-    const row=vehicleSh.getRange(vehicleRow,1,1,vh.length).getValues()[0];
-    const set=(h,v)=>{const i=vh.indexOf(h);if(i>=0&&String(v??'').trim()!=='')row[i]=v};
-    set('Owner ID',ownerId);set('Merk',p.brand);set('Model',p.model);set('Tahun',p.year);
-    set('Warna',p.color);set('Jenis',p.type);set('Catatan',p.vehicleNotes);set('Status','ACTIVE');
-    set('Updated At',now_().timestamp);
-    vehicleSh.getRange(vehicleRow,1,1,vh.length).setValues([row]);
-    return {success:true,mode:'UPDATED',plate:plate.toUpperCase(),ownerId:ownerId};
-  }
-}
-
-/* ---------- REPORT ---------- */
-
-function parseDate_(s){
-  const p=String(s||'').split('-');
-  if(p.length!==3)return null;
-  return new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));
-}
-
-function report24h_(p){
-  const year=Number(p.year||new Date().getFullYear());
-  const month=String(p.month||'ALL').toUpperCase();
-  const day=String(p.day||'ALL').toUpperCase();
-  const gate=String(p.gate||'ALL').toUpperCase();
-  const activity=String(p.activity||'ALL').toUpperCase();
-
-  const vehicles=rows_('VEHICLES');
-  const vehicleMap={};
-  vehicles.forEach(function(v){
-    vehicleMap[normalize_(v['No Polisi'])]={
-      type:String(v['Jenis']||''),
-      ownerId:String(v['Owner ID']||'')
-    };
-  });
-
-  const logs=rows_('ACCESS_LOG').filter(function(x){
-    const parts=String(x['Tanggal']||'').split('/');
-    if(parts.length!==3)return false;
-    const d=Number(parts[0]),m=Number(parts[1]),y=Number(parts[2]);
-    if(y!==year)return false;
-    if(month!=='ALL'&&m!==Number(month))return false;
-    if(day!=='ALL'&&d!==Number(day))return false;
-    if(gate!=='ALL'&&String(x['Gate']||'').toUpperCase()!==gate)return false;
-    return true;
-  }).sort(function(a,b){
-    return String(a['Server Timestamp']).localeCompare(String(b['Server Timestamp']));
-  });
-
-  const displayLogs=activity==='ALL'
-    ? logs
-    : logs.filter(function(x){return String(x['Activity']||'').toUpperCase()===activity;});
-
-  // One row = one owner/person per calendar day (the operational 1x24h window).
-  // Owner ID is preferred, then Employee ID, then name, then plate as fallback.
-  const groups={};
-  logs.forEach(function(x){
-    const date=String(x['Tanggal']||'');
-    const ownerId=String(x['Owner ID']||'').trim();
-    const name=String(x['Nama Pemilik']||'Belum diisi').trim()||'Belum diisi';
-    const emp=String(x['Employee ID']||'').trim();
-    const identity=ownerId||emp||normalize_(name)||('PLATE-'+normalize_(x['No Polisi']));
-    const key=date+'|'+identity;
-
-    if(!groups[key]){
-      groups[key]={
-        date:date,name:name,employeeId:emp,ownerId:ownerId,
-        division:String(x['Divisi']||''),position:String(x['Jabatan']||''),
-        plates:{},types:{},events:[],ins:0,outs:0,firstIn:'',lastOut:''
-      };
-    }
-
-    const g=groups[key];
-    if(!g.name||g.name==='Belum diisi')g.name=name;
-    if(!g.employeeId)g.employeeId=emp;
-    if(!g.ownerId)g.ownerId=ownerId;
-    if(!g.division)g.division=String(x['Divisi']||'');
-    if(!g.position)g.position=String(x['Jabatan']||'');
-
-    const plate=String(x['No Polisi']||'').trim();
-    const v=vehicleMap[normalize_(plate)];
-    if(plate)g.plates[plate]=true;
-    if(v&&v.type)g.types[v.type]=true;
-
-    const act=String(x['Activity']||'').toUpperCase();
-    const time=String(x['Jam']||'');
-    if(act==='IN'){g.ins++;if(!g.firstIn)g.firstIn=time;}
-    if(act==='OUT'){g.outs++;g.lastOut=time;}
-    g.events.push({act:act,time:time,plate:plate});
-  });
-
-  const grouped=Object.keys(groups).map(function(k){
-    const g=groups[k];
-    const timeline=g.events.map(function(e){
-      return e.act+' '+e.time+(e.plate?' ['+e.plate+']':'');
-    }).join('  |  ');
-    const plates=Object.keys(g.plates).join(', ');
-    const types=Object.keys(g.types).join(', ');
-    let status='SELESAI';
-    if(g.ins>g.outs)status='MASIH DI DALAM';
-    if(g.ins===0&&g.outs>0)status='OUT TANPA IN';
-
-    // Activity filter only controls displayed rows/timeline; grouping remains
-    // based on the complete 1x24h day so the person's status is not distorted.
-    const visibleEvents=activity==='ALL'
-      ? g.events
-      : g.events.filter(function(e){return e.act===activity;});
-    const visibleTimeline=visibleEvents.map(function(e){
-      return e.act+' '+e.time+(e.plate?' ['+e.plate+']':'');
-    }).join('  |  ');
-
-    return {
-      tanggal:g.date,nama:g.name,employeeId:g.employeeId,divisi:g.division,
-      jabatan:g.position,noPolisi:plates,jenisKendaraan:types,
-      riwayat:visibleTimeline||timeline,jumlahIn:g.ins,jumlahOut:g.outs,
-      firstIn:g.firstIn,lastOut:g.lastOut,status:status,ownerId:g.ownerId
-    };
-  }).filter(function(g){
-    return activity==='ALL'||g.riwayat;
-  }).sort(function(a,b){
-    return (a.tanggal+a.nama).localeCompare(b.tanggal+b.nama);
-  });
-
-  // ACCESS_LOG is a generated data view. Preserve the sheet's manually
-  // configured widths, colors, fonts, freeze panes, etc.
-  const sh=sheet_('ACCESS_LOG');
-  const headers=HEADERS.ACCESS_LOG;
-  if(sh.getLastRow()===0){
-    sh.getRange(1,1,1,headers.length).setValues([headers]);
-  }else{
-    const existing=sh.getRange(1,1,1,headers.length).getValues()[0];
-    if(existing.every(function(v){return String(v||'').trim()==='';})){
-      sh.getRange(1,1,1,headers.length).setValues([headers]);
-    }
-  }
-
-  if(sh.getLastRow()>1){
-    sh.getRange(2,1,sh.getLastRow()-1,headers.length).clearContent();
-  }
-
-  const values=grouped.map(function(g){
-    return [
-      g.tanggal,g.nama,g.employeeId,g.divisi,g.jabatan,g.noPolisi,
-      g.jenisKendaraan,g.riwayat,g.jumlahIn,g.jumlahOut,g.firstIn,g.lastOut,
-      g.status,now_().timestamp
-    ];
-  });
-  if(values.length)sh.getRange(2,1,values.length,headers.length).setValues(values);
-
-  // ACCESS_LOG is the live 1x24h operational view.
-  rebuildAccessLog24h_(db_());
-
-  return {
-    filters:{year:year,month:month,day:day,gate:gate,activity:activity},
-    summary:{
-      totalTransactions:logs.length,
-      visibleTransactions:displayLogs.length,
-      people:grouped.length,
-      in:logs.filter(function(x){return String(x['Activity']).toUpperCase()==='IN';}).length,
-      out:logs.filter(function(x){return String(x['Activity']).toUpperCase()==='OUT';}).length
-    },
-    grouped:grouped,
-    logs:displayLogs
-  };
-}
-
-function report_(p){
-  const year=Number(p.year||new Date().getFullYear());
-  const month=String(p.month||'ALL').toUpperCase();
-  const day=String(p.day||'ALL').toUpperCase();
-  const gate=String(p.gate||'ALL').toUpperCase();
-  const activity=String(p.activity||'ALL').toUpperCase();
-
-  const logs=rows_('ACCESS_LOG').filter(function(x){
-    const raw=String(x['Tanggal']||'');
-    const parts=raw.split('/');
-    if(parts.length!==3)return false;
-
-    const d=Number(parts[0]),m=Number(parts[1]),y=Number(parts[2]);
-
-    if(y!==year)return false;
-    if(month!=='ALL'&&m!==Number(month))return false;
-    if(day!=='ALL'&&d!==Number(day))return false;
-    if(gate!=='ALL'&&String(x['Gate']||'').toUpperCase()!==gate)return false;
-    if(activity!=='ALL'&&String(x['Activity']||'').toUpperCase()!==activity)return false;
-
-    return true;
-  });
-
-  const denied=rows_('ACCESS_LOG').filter(function(x){
-    const parts=String(x['Tanggal']||'').split('/');
-    if(parts.length!==3)return false;
-    const d=Number(parts[0]),m=Number(parts[1]),y=Number(parts[2]);
-
-    if(y!==year)return false;
-    if(month!=='ALL'&&m!==Number(month))return false;
-    if(day!=='ALL'&&d!==Number(day))return false;
-    if(gate!=='ALL'&&String(x['Gate']||'').toUpperCase()!==gate)return false;
-
-    return true;
-  });
-
-  return {
-    filters:{year:year,month:month,day:day,gate:gate,activity:activity},
-    summary:{
-      total:logs.length,
-      in:logs.filter(x=>String(x['Activity']).toUpperCase()==='IN').length,
-      out:logs.filter(x=>String(x['Activity']).toUpperCase()==='OUT').length,
-      denied:denied.length
-    },
-    logs:logs,
-    deniedLogs:denied
-  };
-}
-
-function currentStatus_(){
-  const logs=rows_('ACCESS_LOG');
-  const latest={};
-
-  logs.forEach(function(x){
-    const plate=normalize_(x['No Polisi']);
-    if(!plate)return;
-
-    if(!latest[plate] ||
-       String(x['Server Timestamp'])>String(latest[plate]['Server Timestamp'])){
-      latest[plate]=x;
-    }
-  });
-
-  return Object.keys(latest).map(function(k){
-    const x=latest[k];
-    return {
-      plate:x['No Polisi'],
-      ownerId:x['Owner ID'],
-      name:x['Nama Pemilik'],
-      division:x['Divisi'],
-      position:x['Jabatan'],
-      activity:x['Activity'],
-      timestamp:x['Server Timestamp'],
-      gate:x['Gate']
-    };
-  }).filter(x=>String(x.activity).toUpperCase()==='IN');
-}
-
-function route_(action,p){
-  switch(action){
-    case 'health':
-      return {
-        system:'VACS',
-        status:'ONLINE',
-        timestamp:now_().timestamp,
-        spreadsheetId:CONFIG.SPREADSHEET_ID,
-        database:'READY',
-        layoutPolicy:'PRESERVE_MANUAL',centralDatabase:'SINGLE_SOURCE_OF_TRUTH',duplicatePolicy:'PLATE_UNIQUE'
-      };
-
-    case 'search':return searchVehicle_(p.q||'');
-    case 'access':return recordAccess_(p);
-    case 'dashboard':{
-      const d=report_({year:new Date().getFullYear(),month:new Date().getMonth()+1,day:new Date().getDate()});
-      return {
-        today:now_().date,
-        owners:rows_('VEHICLES').length,
-        vehicles:rows_('VEHICLES').length,
-        totalToday:d.summary.total,
-        inToday:d.summary.in,
-        outToday:d.summary.out,
-        deniedToday:d.summary.denied
-      };
-    }
-    case 'recent':
-      return rows_('ACCESS_LOG').reverse().slice(0,Number(p.limit||10)).map(x=>({
-        timestamp:x['Server Timestamp'],plate:x['No Polisi'],name:x['Nama Pemilik'],
-        activity:x['Activity'],gate:x['Gate'],officerName:x['Officer Name'],deviceId:x['Device ID']
-      }));
-    case 'setup':return setupVACS();
-    case 'report':return report24h_(p);
-    case 'reportRaw':return report_(p);
-    case 'current':return currentStatus_();
-    case 'diagnostics':return diagnostics_();
-    case 'registerVehicle':return registerVehicle_(p);
-    case 'migrateAccessLog':ensureDatabase_();return {success:true,message:'ACCESS_LOG 1x24h rebuilt.',version:'6.3'};
-    case 'importCSV':return importMasterCSV_(p.csv||'');
-    case 'saveMaster':return saveMasterManual_(p);
-    default:throw Error('Action API tidak dikenal: '+action);
-  }
-}
-
 
 function registerVehicle_(p){
-  const name=String(p.name||'').trim();
-  const plate=String(p.plate||'').trim();
-  const division=String(p.division||'').trim();
-  const type=String(p.type||'').trim();
-  const model=String(p.model||'').trim();
-  const color=String(p.color||'').trim();
-  if(!name||!plate)return {ok:false,message:'Nama dan Nomor Kendaraan wajib diisi.'};
+  const row=[
+    String(p.name||'').trim(),
+    String(p.plate||'').trim(),
+    String(p.division||'').trim(),
+    String(p.type||'').trim(),
+    String(p.model||'').trim(),
+    String(p.color||'').trim()
+  ];
 
-  const sh=database_().getSheetByName('VEHICLES');
-  const headers=['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan'];
-  if(sh.getLastRow()===0)sh.getRange(1,1,1,headers.length).setValues([headers]);
+  if(!row[0] || !row[1])
+    return {ok:false,message:'Nama dan Nomor Kendaraan wajib diisi.'};
 
-  const data=sh.getDataRange().getValues();
-  const hp=data[0].map(String);
-  const pi=hp.indexOf('Nomor Kendaraan');
-  const existing=data.slice(1).findIndex(r=>normalize_(r[pi])===normalize_(plate));
+  const sh=db_().getSheetByName('VEHICLES');
+  const last=sh.getLastRow();
+  let existing=-1;
 
-  const row=[name,plate,division,type,model,color];
+  if(last>=2){
+    const plates=sh.getRange(2,2,last-1,1).getValues();
+    existing=plates.findIndex(r=>normalize_(r[0])===normalize_(row[1]));
+  }
+
   if(existing>=0){
-    sh.getRange(existing+2,1,1,headers.length).setValues([row]);
+    sh.getRange(existing+2,1,1,6).setValues([row]);
     return {ok:true,mode:'updated',message:'Kendaraan sudah terdaftar. Data diperbarui.',vehicle:row};
   }
-  sh.appendRow(row);
+
+  sh.getRange(sh.getLastRow()+1,1,1,6).setValues([row]);
   return {ok:true,mode:'created',message:'Kendaraan berhasil didaftarkan.',vehicle:row};
 }
 
-function diagnostics_(){
-  const ss=db_();
-  const required=Object.values(CONFIG.SHEETS);
-  const present=required.filter(n=>!!ss.getSheetByName(n));
+function access_(p){
+  const plate=String(p.plate||'').trim();
+  const activity=String(p.activity||'').toUpperCase().trim();
+
+  if(!plate) throw Error('Nomor kendaraan kosong.');
+  if(activity!=='IN' && activity!=='OUT') throw Error('Aktivitas harus IN atau OUT.');
+
+  const exact=searchVehicle_(plate).found.find(v=>normalize_(v.plate)===normalize_(plate));
+  if(!exact) throw Error('KENDARAAN TIDAK TERDAFTAR — AKSES DITOLAK.');
+
+  const lock=LockService.getScriptLock();
+  lock.waitLock(15000);
+
+  try{
+    const sh=db_().getSheetByName('ACCESS_LOG');
+    const n=now_();
+    const data=sh.getLastRow()>=2
+      ? sh.getRange(2,1,sh.getLastRow()-1,10).getValues()
+      : [];
+
+    // Find the latest open IN for this exact vehicle on this date.
+    let openRow=-1;
+    for(let i=data.length-1;i>=0;i--){
+      const r=data[i];
+      if(String(r[1])===exact.plate && String(r[8])===n.date && String(r[6]).trim() && !String(r[7]).trim()){
+        openRow=i+2;
+        break;
+      }
+    }
+
+    if(activity==='IN'){
+      // A second IN while already inside is recorded as a separate event,
+      // but the row remains structurally valid.
+      const row=[
+        exact.name,exact.plate,exact.division,exact.type,exact.model,exact.color,
+        n.time,'',n.date,String(p.notes||'')
+      ];
+      sh.getRange(sh.getLastRow()+1,1,1,10).setValues([row]);
+    }else{
+      if(openRow>0){
+        sh.getRange(openRow,8).setValue(n.time);
+        if(String(p.notes||'').trim()) sh.getRange(openRow,10).setValue(String(p.notes));
+      }else{
+        const row=[
+          exact.name,exact.plate,exact.division,exact.type,exact.model,exact.color,
+          '',n.time,n.date,String(p.notes||'OUT tanpa IN')
+        ];
+        sh.getRange(sh.getLastRow()+1,1,1,10).setValues([row]);
+      }
+    }
+
+    rebuildMerge_();
+
+    return {success:true,vehicle:exact,activity,timestamp:n.timestamp,gate:p.gate||'Gate 1'};
+  }finally{
+    lock.releaseLock();
+  }
+}
+
+function rebuildMerge_(){
+  const sh=db_().getSheetByName('ACCESS_LOG');
+  const last=sh.getLastRow();
+  if(last<2) return;
+
+  // Remove previous merges in Name column only.
+  sh.getRange(2,1,last-1,1).breakApart();
+
+  // Center name groups for the same person and same date.
+  const data=sh.getRange(2,1,last-1,10).getValues();
+  let start=2;
+  while(start<=last){
+    const first=data[start-2];
+    const name=String(first[0]||'');
+    const date=String(first[8]||'');
+    let end=start+1;
+    while(end<=last){
+      const r=data[end-2];
+      if(String(r[0]||'')!==name || String(r[8]||'')!==date) break;
+      end++;
+    }
+    const span=end-start;
+    if(span>1){
+      sh.getRange(start,1,span,1).mergeVertically();
+    }
+    sh.getRange(start,1,span,1)
+      .setVerticalAlignment('middle')
+      .setHorizontalAlignment('center');
+    start=end;
+  }
+}
+
+function dashboard_(){
+  const vehicles=rows_('VEHICLES');
+  const log=rows_('ACCESS_LOG');
+  const today=now_().date;
+  const todayRows=log.filter(r=>String(r['Hari/Tanggal']||'')===today);
   return {
-    system:'VACS',
-    version:'5.8',
-    spreadsheetId:CONFIG.SPREADSHEET_ID,
-    centralDatabase:true,
-    spreadsheetName:ss.getName(),
-    requiredSheets:required,
-    presentSheets:present,
-    allRequiredSheetsPresent:present.length===required.length,
-    layoutPolicy:'PRESERVE_MANUAL',
-    concurrentWriteProtection:'SCRIPT_LOCK',
-    serverTimezone:CONFIG.TIMEZONE
+    vehicles:vehicles.length,
+    owners:new Set(vehicles.map(v=>String(v['Nama']||'').trim()).filter(Boolean)).size,
+    inToday:todayRows.filter(r=>String(r['Jam Masuk']||'').trim()).length,
+    denied:todayRows.filter(r=>String(r['Keterangan']||'').toUpperCase().indexOf('DITOLAK')>=0).length
   };
 }
 
-function testDatabase(){
-  const ss=ensureDatabase_();
+function current_(){
+  const log=rows_('ACCESS_LOG');
+  const map={};
+  log.forEach(r=>{
+    const p=normalize_(r['Nomor Kendaraan']);
+    if(!p)return;
+    map[p]=r;
+  });
+  return Object.values(map).filter(r=>String(r['Jam Masuk']||'').trim() && !String(r['Jam Keluar']||'').trim());
+}
+
+function report_(p){
+  const year=Number(p.year)||now_().year;
+  const month=Number(p.month)||now_().month;
+  const monthText=String(month).padStart(2,'0');
+
+  const log=rows_('ACCESS_LOG').filter(r=>{
+    const d=String(r['Hari/Tanggal']||'');
+    return d.slice(6,10)===String(year) && d.slice(3,5)===monthText;
+  });
+
+  const grouped=log.map(r=>({
+    tanggal:r['Hari/Tanggal']||'',
+    nama:r['Nama']||'',
+    employeeId:'',
+    divisi:r['Bagian/Divisi']||'',
+    jabatan:'',
+    noPolisi:r['Nomor Kendaraan']||'',
+    jenisKendaraan:r['Jenis Kendaraan']||'',
+    riwayat:(r['Jam Masuk']?'IN '+r['Jam Masuk']:'')+(r['Jam Keluar']?' → OUT '+r['Jam Keluar']:''),
+    jumlahIn:r['Jam Masuk']?1:0,
+    jumlahOut:r['Jam Keluar']?1:0,
+    firstIn:r['Jam Masuk']||'',
+    lastOut:r['Jam Keluar']||'',
+    status:r['Jam Keluar']?'SELESAI':'MASIH DI DALAM'
+  }));
+
   return {
-    name:ss.getName(),
-    id:ss.getId(),
-    url:ss.getUrl(),
+    year,month,
+    summary:{
+      people:new Set(grouped.map(x=>x.nama+'|'+x.tanggal)).size,
+      in:grouped.reduce((a,x)=>a+x.jumlahIn,0),
+      out:grouped.reduce((a,x)=>a+x.jumlahOut,0),
+      totalTransactions:grouped.length
+    },
+    grouped
+  };
+}
+
+function health_(){
+  const ss=db_();
+  return {
+    system:'VACS',
+    status:'ONLINE',
+    version:CONFIG.VERSION,
+    timestamp:now_().timestamp,
+    spreadsheetId:CONFIG.SPREADSHEET_ID,
     sheets:ss.getSheets().map(s=>s.getName())
   };
 }
 
+function diagnostics_(){ return health_(); }
+
+function route_(action,p){
+  switch(action){
+    case 'health': return health_();
+    case 'dashboard': return dashboard_();
+    case 'search': return searchVehicle_(p.q||'');
+    case 'registerVehicle': return registerVehicle_(p);
+    case 'access': return access_(p);
+    case 'current': return current_();
+    case 'report': return report_(p);
+    case 'diagnostics': return diagnostics_();
+    default: throw Error('Action tidak dikenal: '+action);
+  }
+}
 
 /**
- * Optional spreadsheet-side sync:
- * If an administrator manually edits ACCESS_LOG, rebuild today's ACCESS_LOG.
- * This never changes column widths or formatting.
+ * Manual edits in ACCESS_LOG do not require any other sheet.
+ * Keep the Name merge consistent after a manual edit.
  */
 function onEdit(e){
   try{
-    if(!e || !e.range) return;
-    const sh=e.range.getSheet();
-    if(sh.getName()!=='ACCESS_LOG') return;
-    const d=now_();
-    rebuildAccessLog24h_(db_());
-    report24h_({year:Number(d.date.split('/')[2]),month:Number(d.date.split('/')[1]),day:Number(d.date.split('/')[0]),gate:'ALL',activity:'ALL'});
-  }catch(err){
-    console.log('onEdit ACCESS_LOG sync: '+err.message);
-  }
+    if(e && e.range && e.range.getSheet().getName()==='ACCESS_LOG'){
+      rebuildMerge_();
+    }
+  }catch(err){}
 }

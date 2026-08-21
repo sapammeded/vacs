@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08111f">
-<title>VACS V6.3 — Vehicle Access Control System</title>
+<title>VACS V6.5 — Vehicle Access Control System</title>
 <style>
 :root{--bg:#eef2f7;--nav:#08111f;--card:#fff;--text:#162033;--muted:#6b778c;--line:#dce3ec;--green:#0f9d58;--red:#d93025;--blue:#1769e0;--orange:#b45f06}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,system-ui,sans-serif}
@@ -120,7 +120,7 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-const GAS_API_URL="https://script.google.com/macros/s/AKfycbx-lNlGm4zfF4TWnb5Y3EoM6FL3KPLmlIke7JdvtKiTsYIcW24_UH2VY3WHdkrRj6yg/exec";
+const GAS_API_URL="https://script.google.com/macros/s/AKfycby_-WLNw1Dd-3lhPxrqHN80_KKwFk0TFSAmHiSJ8WflxM-OXOR0AhkE0fU0e-M3iqaB/exec";
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 let selected=null,lastReport=null;
@@ -240,18 +240,18 @@ async function generateReport(){
     `<div class="stat"><b>${s.out||0}</b><span>TOTAL OUT</span></div>`+
     `<div class="stat"><b>${s.totalTransactions||0}</b><span>TRANSAKSI</span></div>`;
    $('reportTable').className='tablewrap';
+   $('reportTable').className='tablewrap';
    $('reportTable').innerHTML=
     `<table class="reporttable"><thead><tr>`+
-    `<th>Tanggal</th><th>Nama Pemilik</th><th>Employee ID</th><th>Divisi</th><th>Jabatan</th>`+
-    `<th>No Polisi</th><th>Jenis</th><th>Riwayat IN / OUT 1×24 Jam</th><th>IN</th><th>OUT</th><th>Status</th>`+
+    `<th>Nama</th><th>Nomor Kendaraan</th><th>Bagian/Divisi</th><th>Jenis Kendaraan</th><th>Model</th><th>Warna Kendaraan</th>`+
+    `<th>Jam Masuk</th><th>Jam Keluar</th><th>Hari/Tanggal</th><th>Keterangan</th>`+
     `</tr></thead><tbody>`+
     (r.data.grouped||[]).map(x=>
-      `<tr><td>${esc(x.tanggal)}</td><td><b>${esc(x.nama)}</b></td><td>${esc(x.employeeId)}</td>`+
-      `<td>${esc(x.divisi)}</td><td>${esc(x.jabatan)}</td><td>${esc(x.noPolisi)}</td>`+
-      `<td>${esc(x.jenisKendaraan)}</td><td>${esc(x.riwayat)}</td><td>${x.jumlahIn}</td><td>${x.jumlahOut}</td><td>${esc(x.status)}</td></tr>`
+      `<tr><td><b>${esc(x.nama)}</b></td><td>${esc(x.noPolisi)}</td><td>${esc(x.divisi)}</td>`+
+      `<td>${esc(x.jenisKendaraan)}</td><td></td><td></td><td>${esc(x.firstIn)}</td><td>${esc(x.lastOut)}</td>`+
+      `<td>${esc(x.tanggal)}</td><td>${esc(x.status)}</td></tr>`
     ).join('')||
-    '<tr><td colspan="11">Tidak ada transaksi pada periode tersebut.</td></tr>'+
-    `</tbody></table>`;
+    '<tr><td colspan="10">Tidak ada transaksi pada periode tersebut.</td></tr></tbody></table>';
    toast('✓ Report 1×24 jam berhasil dibuat.');
  }catch(e){
    $('reportTable').className='empty';
