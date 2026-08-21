@@ -1,19 +1,44 @@
-VACS V6.0 FINAL — VEHICLE LOGBOOK
+VACS V6.1 — FINAL MASTER VEHICLES CONTRACT
 
-Exact operational columns:
-Nama | Nomor Kendaraan | Bagian/Divisi | Jenis Kendaraan | Model | Warna Kendaraan | Jam Masuk | Jam Keluar | Hari/Tanggal | Keterangan
+THIS IS THE LOCKED VEHICLES SHEET FORMAT.
+It MUST contain exactly these six columns, in this order:
 
-Logic:
-- 1 owner/person + 1 day = one visual group.
-- Every IN→OUT cycle = one separate row.
-- Name is vertically merged and centered across all rows for that person/day.
-- Other columns remain row-by-row.
-- Open IN remains with blank Jam Keluar and MASIH DI DALAM.
-- OUT without an IN is retained as OUT tanpa IN.
-- One owner can have unlimited registered vehicles; no hard-coded per-owner limit.
-- Partial plate lookup and central multi-device database retained.
-- Raw transaction history remains in ACCESS_HISTORY.
-- ACCESS_LOG is the final human-readable operational logbook.
-- Spreadsheet layout is preserved: content only is cleared/written; no auto-resize/reformat.
+1. Nama
+2. Nomor Kendaraan
+3. Bagian/Divisi
+4. Jenis Kendaraan
+5. Model
+6. Warna Kendaraan
 
-Deploy Code.gs + index.html together in the existing Apps Script/GitHub project, keeping the same Spreadsheet and /exec URL.
+No Owner ID.
+No Vehicle ID.
+No Employee ID.
+No technical master columns.
+
+VEHICLE LOOKUP:
+- Nomor Kendaraan is the lookup key.
+- A person can have unlimited vehicles; there is no hard-coded per-person vehicle limit.
+- Partial search remains supported by the web app.
+- The profile returned from a plate comes directly from the six VEHICLES fields.
+- Missing profile fields are allowed and can be completed later.
+
+OPERATIONAL LOG:
+The final visible log uses exactly:
+Nama
+Nomor Kendaraan
+Bagian/Divisi
+Jenis Kendaraan
+Model
+Warna Kendaraan
+Jam Masuk
+Jam Keluar
+Hari/Tanggal
+Keterangan
+
+Every IN -> OUT cycle is one row.
+The same person's Nama is vertically merged and centered for all their rows within the same day.
+ACCESS_HISTORY remains the raw audit history.
+
+Do not mix this Code.gs with older versions.
+Replace Code.gs and index.html together in the existing Apps Script/GitHub project.
+Keep the same Spreadsheet and /exec URL.

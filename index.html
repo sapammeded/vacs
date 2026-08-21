@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08111f">
-<title>VACS V6.0 — Vehicle Access Control System</title>
+<title>VACS V6.1 — Vehicle Access Control System</title>
 <style>
 :root{--bg:#eef2f7;--nav:#08111f;--card:#fff;--text:#162033;--muted:#6b778c;--line:#dce3ec;--green:#0f9d58;--red:#d93025;--blue:#1769e0;--orange:#b45f06}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,system-ui,sans-serif}
@@ -105,7 +105,7 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-const GAS_API_URL="https://script.google.com/macros/s/AKfycbzLFIJPSom1XQXu8vjERwPVaWbC9vhx2TnBgKFtNEV206Q3dPfyFVfTQ8feCmoqTrKr/exec";
+const GAS_API_URL="https://script.google.com/macros/s/AKfycbxNII17-IyGoMR076_CCgIR3s0X_gDZp52WHojTNXy7z18ZBGAbkc5lAt7Bpci3aNVc/exec";
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 let selected=null,lastReport=null;
