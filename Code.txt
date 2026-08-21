@@ -35,11 +35,11 @@ const HEADERS = {
   OWNERS:['Owner ID','Nama','Employee ID','Divisi','Jabatan','No HP','Email','Status','Catatan','Updated At'],
   VEHICLES:['Vehicle ID','No Polisi','Owner ID','Merk','Model','Tahun','Warna','Jenis','Status','Catatan','Updated At'],
   ACCESS_HISTORY:['Log ID','Server Timestamp','Tanggal','Jam','No Polisi','Owner ID','Nama Pemilik','Employee ID','Divisi','Jabatan','Activity','Gate','Officer ID','Officer Name','Device ID','Notes'],
-  ACCESS_LOG:['Tanggal','Nama Pemilik','Employee ID','Divisi','Jabatan','No Polisi','Jenis Kendaraan','Riwayat IN/OUT','Jumlah IN','Jumlah OUT','First IN','Last OUT','Status 24H','Updated At'],
+  ACCESS_LOG:['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan'],
   DENIED_LOG:['Denied ID','Server Timestamp','Tanggal','Jam','No Polisi','Gate','Officer ID','Officer Name','Device ID','Reason','Notes'],
   USERS:['User ID','Nama','Role','Gate','PIN','Status','Updated At'],
   SETTINGS:['Key','Value','Description'],
-  REPORT_24H:['Tanggal','Nama Pemilik','Employee ID','Divisi','Jabatan','No Polisi','Jenis Kendaraan','Riwayat IN/OUT','Jumlah IN','Jumlah OUT','First IN','Last OUT','Status 24H','Updated At']
+  REPORT_24H:['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan']
 };
 
 function doGet(e){
@@ -92,7 +92,7 @@ function ensureDatabase_(){
     settings.getRange(2,1,7,3).setValues([
       ['SITE_NAME','Vehicle Access Control Center','Nama site/perusahaan'],
       ['TIMEZONE',CONFIG.TIMEZONE,'Timezone server'],
-      ['SYSTEM_VERSION','VACS V5.6','Versi sistem'],
+      ['SYSTEM_VERSION','VACS V5.9','Versi sistem'],
       ['ACCESS_RULE','REGISTERED_ONLY','Kendaraan tidak terdaftar ditolak'],
       ['SEARCH_MODE','PARTIAL','Pencarian nomor polisi partial'],
       ['CENTRAL_DATABASE',CONFIG.SPREADSHEET_ID,'Spreadsheet pusat VACS'],
@@ -172,40 +172,134 @@ function searchVehicle_(q){
 }
 
 
+function rebuildFinalVehicleLogbook_(ss){
+  const sh=ss.getSheetByName('ACCESS_LOG');
+  const hist=ss.getSheetByName('ACCESS_HISTORY');
+  if(!sh||!hist)return;
+
+  const H=HEADERS.ACCESS_HISTORY;
+  const data=hist.getDataRange().getValues();
+  if(data.length<2){
+    sh.getRange(1,1,1,10).setValues([['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan']]);
+    return;
+  }
+
+  const head=data[0].map(String), ix=n=>head.indexOf(n);
+  const owners=rows_('OWNERS'), vehicles=rows_('VEHICLES');
+  const om={},vm={};
+  owners.forEach(o=>{const id=String(o['Owner ID']||'').trim();if(id)om[id]=o});
+  vehicles.forEach(v=>{const p=normalize_(v['No Polisi']);if(p)vm[p]=v});
+
+  const groups={};
+  data.slice(1).forEach(r=>{
+    const date=String(r[ix('Tanggal')]||'').trim();
+    const plate=String(r[ix('No Polisi')]||'').trim();
+    const act=String(r[ix('Activity')]||'').toUpperCase().trim();
+    if(!date||!plate||!act)return;
+
+    const v=vm[normalize_(plate)]||{};
+    const ownerId=String(r[ix('Owner ID')]||v['Owner ID']||'').trim();
+    const o=om[ownerId]||{};
+    const name=String(r[ix('Nama Pemilik')]||o['Nama']||'Belum diisi').trim();
+    const key=date+'|'+(ownerId||normalize_(name)||normalize_(plate));
+
+    if(!groups[key])groups[key]={name,div:String(r[ix('Divisi')]||o['Divisi']||''),type:String(r[ix('Jenis')]||v['Jenis']||''),model:String(r[ix('Model')]||v['Model']||''),color:String(r[ix('Warna')]||v['Warna']||''),date,events:[]};
+    const g=groups[key];
+    g.events.push({act,time:String(r[ix('Jam')]||''),plate,note:String(ix('Keterangan')>=0?r[ix('Keterangan')]||'':'')});
+  });
+
+  const rows=[];
+  Object.values(groups).forEach(g=>{
+    g.events.sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+    let pending=null;
+    g.events.forEach(e=>{
+      if(e.act==='IN'){
+        if(pending)rows.push([g.name,pending.plate,g.div,g.type,g.model,g.color,pending.time,'',g.date,pending.note||'MASIH DI DALAM']);
+        pending=e;
+      }else if(e.act==='OUT'){
+        if(pending){
+          rows.push([g.name,pending.plate,g.div,g.type,g.model,g.color,pending.time,e.time,g.date,e.note||'']);
+          pending=null;
+        }else rows.push([g.name,e.plate,g.div,g.type,g.model,g.color,'',e.time,g.date,e.note||'OUT tanpa IN']);
+      }
+    });
+    if(pending)rows.push([g.name,pending.plate,g.div,g.type,g.model,g.color,pending.time,'',g.date,pending.note||'MASIH DI DALAM']);
+  });
+
+  // Content only. Manual widths/formatting/freeze are untouched.
+  sh.getRange(1,1,Math.max(1,sh.getMaxRows()),Math.max(10,sh.getMaxColumns())).clearContent();
+  sh.getRange(1,1,1,10).setValues([['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan','Jam Masuk','Jam Keluar','Hari/Tanggal','Keterangan']]);
+  if(rows.length)sh.getRange(2,1,rows.length,10).setValues(rows);
+
+  // Merge Name vertically for each person/day group.
+  let r=2;
+  while(r<rows.length+2){
+    const name=rows[r-2][0], date=rows[r-2][8];
+    let e=r+1;
+    while(e<rows.length+2 && rows[e-2][0]===name && rows[e-2][8]===date)e++;
+    if(e-r>1)sh.getRange(r,1,e-r,1).mergeVertically();
+    sh.getRange(r,1,e-r,1).setVerticalAlignment('middle').setHorizontalAlignment('center');
+    r=e;
+  }
+}
+
 function migrateAccessLogStructure_(ss){
+
   const logSh=ss.getSheetByName('ACCESS_LOG');
   const histSh=ss.getSheetByName('ACCESS_HISTORY');
   if(!logSh||!histSh)return;
 
-  const rawHeaders=HEADERS.ACCESS_HISTORY;
+  const oldHeaders=HEADERS.ACCESS_HISTORY;
   const groupedHeaders=HEADERS.ACCESS_LOG;
-  const lastCol=Math.max(1,logSh.getLastColumn());
-  const firstRow=logSh.getLastRow()>0
-    ? logSh.getRange(1,1,1,lastCol).getValues()[0].map(String)
+  const logLastRow=logSh.getLastRow();
+  const logLastCol=Math.max(1,logSh.getLastColumn());
+  const first=logLastRow>0
+    ? logSh.getRange(1,1,1,logLastCol).getValues()[0].map(String)
     : [];
 
-  // If ACCESS_LOG still has the old raw schema, preserve every existing row
-  // by copying it to ACCESS_HISTORY before changing ACCESS_LOG's contents.
-  const isOldRaw=firstRow.indexOf('Log ID')>=0 && firstRow.indexOf('Activity')>=0;
-  if(isOldRaw && logSh.getLastRow()>1 && histSh.getLastRow()<=1){
-    const raw=logSh.getRange(1,1,logSh.getLastRow(),Math.min(lastCol,rawHeaders.length)).getValues();
-    if(histSh.getLastRow()===0){
-      histSh.getRange(1,1,1,rawHeaders.length).setValues([rawHeaders]);
+  // Old schema = raw transaction columns (Log ID + Activity).
+  // Copy ALL missing raw rows into ACCESS_HISTORY, even when history already
+  // contains some rows. This makes the migration idempotent and prevents loss.
+  const isOldRaw=first.indexOf('Log ID')>=0 && first.indexOf('Activity')>=0;
+
+  if(isOldRaw && logLastRow>1){
+    const raw=logSh.getRange(1,1,logLastRow,Math.min(logLastCol,oldHeaders.length)).getValues();
+    const existingIds={};
+    const hv=histSh.getDataRange().getValues();
+    const hi=hv.length?hv[0].map(String):oldHeaders;
+    const idIdx=hi.indexOf('Log ID');
+    if(idIdx>=0){
+      hv.slice(1).forEach(r=>{
+        const id=String(r[idIdx]||'').trim();
+        if(id)existingIds[id]=true;
+      });
     }
-    const body=raw.slice(1);
-    if(body.length)histSh.getRange(histSh.getLastRow()+1,1,body.length,rawHeaders.length).setValues(body);
+
+    const body=raw.slice(1).filter(r=>{
+      const id=String(r[oldHeaders.indexOf('Log ID')]||'').trim();
+      return id && !existingIds[id];
+    });
+
+    if(histSh.getLastRow()===0){
+      histSh.getRange(1,1,1,oldHeaders.length).setValues([oldHeaders]);
+    }
+    if(body.length){
+      histSh.getRange(histSh.getLastRow()+1,1,body.length,oldHeaders.length).setValues(body);
+    }
   }
 
-  // ACCESS_LOG is now the operator-friendly 1x24h view.
-  // Clear CONTENT only: all manual widths/colors/borders/freeze settings remain.
-  const maxRows=logSh.getMaxRows();
-  const maxCols=logSh.getMaxColumns();
+  // Force ACCESS_LOG to the intended 1x24h operational schema.
+  // clearContent changes values only; it does NOT alter width, colors, borders,
+  // number formats, frozen rows, filters, or other manual layout settings.
+  const maxRows=Math.max(1,logSh.getMaxRows());
+  const maxCols=Math.max(groupedHeaders.length,logSh.getMaxColumns());
   logSh.getRange(1,1,maxRows,maxCols).clearContent();
   logSh.getRange(1,1,1,groupedHeaders.length).setValues([groupedHeaders]);
 
-  // Rebuild all historical grouped rows once.
-  rebuildAccessLog24h_(ss);
+  // Rebuild from the preserved raw history.
+    rebuildFinalVehicleLogbook_(ss);
 }
+
 
 function rebuildAccessLog24h_(ss){
   const hist=ss.getSheetByName('ACCESS_HISTORY');
@@ -314,6 +408,7 @@ function recordAccess_(p){
     console.log('REPORT_24H refresh skipped: '+reportErr.message);
   }
 
+  try{rebuildFinalVehicleLogbook_(database_());}catch(e){console.log('logbook rebuild: '+e.message)}
   return{success:true,vehicle:v,activity:act,timestamp:n.timestamp,gate:gate};
 }
 
@@ -870,6 +965,7 @@ function route_(action,p){
     case 'reportRaw':return report_(p);
     case 'current':return currentStatus_();
     case 'diagnostics':return diagnostics_();
+    case 'migrateAccessLog':ensureDatabase_();return {success:true,message:'ACCESS_LOG 1x24h rebuilt.',version:'6.0'};
     case 'importCSV':return importMasterCSV_(p.csv||'');
     case 'saveMaster':return saveMasterManual_(p);
     default:throw Error('Action API tidak dikenal: '+action);
