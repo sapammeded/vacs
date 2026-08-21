@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08111f">
-<title>VACS V5 — Vehicle Access Control System</title>
+<title>VACS V5.5 — Vehicle Access Control System</title>
 <style>
 :root{--bg:#eef2f7;--nav:#08111f;--card:#fff;--text:#162033;--muted:#6b778c;--line:#dce3ec;--green:#0f9d58;--red:#d93025;--blue:#1769e0;--orange:#b45f06}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,system-ui,sans-serif}
@@ -84,7 +84,7 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 
 <section id="report" class="panel">
 <div class="card">
-<div class="label">REPORT PERIOD</div>
+<div class="label">REPORT 1×24 JAM — SATU BARIS PER PEMILIK PER HARI</div>
 <div class="formgrid">
 <div class="field"><label>TAHUN</label><input id="rYear" type="number"></div>
 <div class="field"><label>BULAN</label><select id="rMonth"><option value="ALL">Semua Bulan</option><option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select></div>
@@ -105,7 +105,7 @@ main{max-width:1000px;margin:auto;padding:15px}.nav{display:flex;gap:8px;overflo
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-const GAS_API_URL="https://script.google.com/macros/s/AKfycbyr2p3E1C0PEnmcK2kei8_tJ7CRO32gSYh4K5yGhzrt8PVrTsscOOMb-GEi-N301OfB/exec";
+const GAS_API_URL="https://script.google.com/macros/s/AKfycbyZO0W2-hT1_aLHNB4lfUCaY1tK7OSKUoRDEm_XtjIROfkA75f5gHhZGRAVY3ArFh0M/exec";
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 let selected=null,lastReport=null;
@@ -177,11 +177,61 @@ function clearMaster(){
  ["mName","mEmp","mPlate","mType","mDiv","mPos","mBrand","mModel","mYear","mColor"].forEach(id=>$(id).value="");
  $("manualResult").className="result";
 }
-async function generateReport(){const year=$("rYear").value||new Date().getFullYear(),month=$("rMonth").value,activity=$("rActivity").value,gate=($("rGate").value||"ALL").trim().toUpperCase();try{const r=await api({action:"report",year,month,activity,gate},30000);if(!r.ok)throw Error(r.message);lastReport=r.data;const s=r.data.summary;$("reportSummary").innerHTML=`<div class="stat"><b>${s.total}</b><span>TOTAL</span></div><div class="stat"><b>${s.in}</b><span>IN</span></div><div class="stat"><b>${s.out}</b><span>OUT</span></div><div class="stat"><b>${s.denied}</b><span>DENIED</span></div>`;$("reportTable").className="tablewrap";$("reportTable").innerHTML=`<table class="reporttable"><thead><tr><th>Tanggal</th><th>Jam</th><th>No Polisi</th><th>Pemilik</th><th>Divisi</th><th>Activity</th><th>Gate</th><th>Officer</th></tr></thead><tbody>${r.data.logs.map(x=>`<tr><td>${esc(x["Tanggal"])}</td><td>${esc(x["Jam"])}</td><td><b>${esc(x["No Polisi"])}</b></td><td>${esc(x["Nama Pemilik"])}</td><td>${esc(x["Divisi"])}</td><td>${esc(x["Activity"])}</td><td>${esc(x["Gate"])}</td><td>${esc(x["Officer Name"])}</td></tr>`).join("")||'<tr><td colspan="8">Tidak ada transaksi.</td></tr>'}</tbody></table>`;toast("Report berhasil dibuat.")}catch(e){toast("Report gagal: "+e.message)}}
-function exportReportCSV(){if(!lastReport){toast("Generate report dulu.");return}const h=["Tanggal","Jam","No Polisi","Pemilik","Divisi","Jabatan","Activity","Gate","Officer","Device"];const rows=[h,...lastReport.logs.map(x=>[x["Tanggal"],x["Jam"],x["No Polisi"],x["Nama Pemilik"],x["Divisi"],x["Jabatan"],x["Activity"],x["Gate"],x["Officer Name"],x["Device ID"]])];const csv=rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}));a.download=`VACS_REPORT_${$("rYear").value}_${$("rMonth").value}.csv`;a.click();URL.revokeObjectURL(a.href)}
-function printReport(){if(!lastReport){toast("Generate report dulu.");return}const w=window.open("","_blank");if(!w){toast("Popup diblokir browser.");return}w.document.write(`<html><head><title>VACS Vehicle Access Report</title><style>body{font-family:Arial;padding:28px}h1{margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #bbb;padding:7px;font-size:11px;text-align:left}th{background:#eee}.sum{display:flex;gap:30px;margin-top:15px}</style></head><body><h1>VACS — VEHICLE ACCESS REPORT</h1><div>Periode: ${esc($("rYear").value)} / ${esc($("rMonth").value)}</div><div class="sum"><b>Total: ${lastReport.summary.total}</b><b>IN: ${lastReport.summary.in}</b><b>OUT: ${lastReport.summary.out}</b><b>Denied: ${lastReport.summary.denied}</b></div>${$("reportTable").innerHTML}</body></html>`);w.document.close();w.focus();w.print()}
+async function generateReport(){
+ const btn=$('generateReport');
+ const year=$('rYear').value||new Date().getFullYear();
+ const month=$('rMonth').value;
+ const activity=$('rActivity').value;
+ const gate=($('rGate').value||'ALL').trim().toUpperCase();
+ btn.disabled=true;
+ btn.textContent='⏳ MEMBUAT REPORT...';
+ try{
+   const r=await api({action:'report',year:year,month:month,activity:activity,gate:gate},30000);
+   if(!r||!r.ok)throw Error((r&&r.message)||'Server VACS tidak merespons.');
+   lastReport=r.data;
+   const s=r.data.summary||{};
+   $('reportSummary').innerHTML=
+    `<div class="stat"><b>${s.people||0}</b><span>PEMILIK / HARI</span></div>`+
+    `<div class="stat"><b>${s.in||0}</b><span>TOTAL IN</span></div>`+
+    `<div class="stat"><b>${s.out||0}</b><span>TOTAL OUT</span></div>`+
+    `<div class="stat"><b>${s.totalTransactions||0}</b><span>TRANSAKSI</span></div>`;
+   $('reportTable').className='tablewrap';
+   $('reportTable').innerHTML=
+    `<table class="reporttable"><thead><tr>`+
+    `<th>Tanggal</th><th>Nama Pemilik</th><th>Employee ID</th><th>Divisi</th><th>Jabatan</th>`+
+    `<th>No Polisi</th><th>Jenis</th><th>Riwayat IN / OUT 1×24 Jam</th><th>IN</th><th>OUT</th><th>Status</th>`+
+    `</tr></thead><tbody>`+
+    (r.data.grouped||[]).map(x=>
+      `<tr><td>${esc(x.tanggal)}</td><td><b>${esc(x.nama)}</b></td><td>${esc(x.employeeId)}</td>`+
+      `<td>${esc(x.divisi)}</td><td>${esc(x.jabatan)}</td><td>${esc(x.noPolisi)}</td>`+
+      `<td>${esc(x.jenisKendaraan)}</td><td>${esc(x.riwayat)}</td><td>${x.jumlahIn}</td><td>${x.jumlahOut}</td><td>${esc(x.status)}</td></tr>`
+    ).join('')||
+    '<tr><td colspan="11">Tidak ada transaksi pada periode tersebut.</td></tr>'+
+    `</tbody></table>`;
+   toast('✓ Report 1×24 jam berhasil dibuat.');
+ }catch(e){
+   $('reportTable').className='empty';
+   $('reportTable').textContent='❌ '+e.message;
+   toast('Report gagal: '+e.message);
+ }finally{
+   btn.disabled=false;
+   btn.textContent='📊 GENERATE REPORT';
+ }
+}
+function exportReportCSV(){
+ if(!lastReport){toast('Generate report dulu.');return}
+ const rows=[['Tanggal','Nama Pemilik','Employee ID','Divisi','Jabatan','No Polisi','Riwayat IN/OUT 1x24 Jam','Jumlah IN','Jumlah OUT','First IN','Last OUT','Status 24H'],...(lastReport.grouped||[]).map(x=>[x.tanggal,x.nama,x.employeeId,x.divisi,x.jabatan,x.noPolisi,x.riwayat,x.jumlahIn,x.jumlahOut,x.firstIn,x.lastOut,x.status])];
+ if(window.XLSX){const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:13},{wch:24},{wch:16},{wch:16},{wch:22},{wch:20},{wch:70},{wch:10},{wch:10},{wch:10},{wch:10},{wch:18}];XLSX.utils.book_append_sheet(wb,ws,'REPORT 24H');XLSX.writeFile(wb,`VACS_REPORT_24H_${$('rYear').value}_${$('rMonth').value}.xlsx`);}
+ else{const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download=`VACS_REPORT_24H_${$('rYear').value}_${$('rMonth').value}.csv`;a.click();}
+}
+function printReport(){
+ if(!lastReport){toast('Generate report dulu.');return}const w=window.open('','_blank');if(!w){toast('Popup diblokir browser.');return}
+ const rows=(lastReport.grouped||[]).map(x=>`<tr><td>${esc(x.tanggal)}</td><td>${esc(x.nama)}</td><td>${esc(x.employeeId)}</td><td>${esc(x.divisi)}</td><td>${esc(x.noPolisi)}</td><td>${esc(x.riwayat)}</td><td>${x.jumlahIn}</td><td>${x.jumlahOut}</td><td>${esc(x.status)}</td></tr>`).join('');
+ w.document.write(`<html><head><title>VACS 24H Vehicle Access Report</title><style>body{font-family:Arial;padding:24px;color:#111}h1{margin-bottom:5px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #aaa;padding:7px;font-size:10px;text-align:left;vertical-align:top}th{background:#eee}.sum{display:flex;gap:24px;margin-top:14px;font-weight:bold}@media print{body{padding:8px}}</style></head><body><h1>VACS — VEHICLE ACCESS REPORT 1×24 JAM</h1><div>Periode: ${esc($('rYear').value)} / ${esc($('rMonth').value)} • Gate: ${esc($('rGate').value||'ALL')}</div><div class="sum"><span>Pemilik/Hari: ${lastReport.summary.people}</span><span>IN: ${lastReport.summary.in}</span><span>OUT: ${lastReport.summary.out}</span><span>Transaksi: ${lastReport.summary.totalTransactions}</span></div><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Employee ID</th><th>Divisi</th><th>No Polisi</th><th>Riwayat IN/OUT 1×24 Jam</th><th>IN</th><th>OUT</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan="9">Tidak ada data.</td></tr>'}</tbody></table></body></html>`);w.document.close();w.focus();setTimeout(()=>w.print(),300);
+}
 async function current(){try{const r=await api({action:"current"},30000);if(!r.ok)throw Error(r.message);const a=r.data||[];$("currentList").className=a.length?"tablewrap":"empty";$("currentList").innerHTML=a.length?`<table class="reporttable"><thead><tr><th>No Polisi</th><th>Pemilik</th><th>Divisi</th><th>IN Time</th><th>Gate</th></tr></thead><tbody>${a.map(x=>`<tr><td><b>${esc(x.plate)}</b></td><td>${esc(x.name)}</td><td>${esc(x.division)}</td><td>${esc(x.timestamp)}</td><td>${esc(x.gate)}</td></tr>`).join("")}</tbody></table>`:"Tidak ada kendaraan yang sedang tercatat berada di dalam."}catch(e){$("currentList").textContent="Gagal memuat status."}}
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(b.dataset.tab).classList.add("active");if(b.dataset.tab==="current")current()});
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(b.dataset.tab).classList.add("active");if(b.dataset.tab==="current")current();
+if(b.dataset.tab==="report")health()});
 $("search").addEventListener("input",()=>{clearTimeout(window.__t);window.__t=setTimeout(searchVehicle,220)});
 $("inBtn").disabled=true;$("outBtn").disabled=true;$("inBtn").onclick=function(e){e.preventDefault();access("IN")};$("outBtn").onclick=function(e){e.preventDefault();access("OUT")};$("importBtn").onclick=importCSV;$("saveMasterBtn").onclick=saveMaster;$("clearMasterBtn").onclick=clearMaster;$("generateReport").onclick=generateReport;$("exportCsv").onclick=exportReportCSV;$("printReport").onclick=printReport;
 $("rYear").value=new Date().getFullYear();
