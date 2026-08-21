@@ -46,3 +46,21 @@ Replace BOTH Code.gs and index.html.
 Deploy a NEW web-app version:
 Apps Script > Deploy > Manage deployments > Edit > New version > Deploy.
 Keep the same /exec URL.
+
+
+V7.1.1 HOTFIX:
+- Fix Date object formatting from Google Sheets: Jam IN/OUT = HH:mm:ss, Tanggal = dd/MM/yyyy.
+- Fix stale Gate error message remaining after a new search.
+- Currently Inside now shows Nama + Nomor Kendaraan + Divisi + Jam IN + Tanggal.
+
+
+V7.2 ADMIN DELETE + BUGFIX:
+- Admin-only Delete from VEHICLES using PIN.
+- ACCESS_LOG is never deleted when a vehicle is deleted from MASTER.
+- Delete action is written to server audit log.
+- Backend PIN is stored in Apps Script Script Properties (default PIN: 2580; change it before production).
+- Existing V7.1.1 date/time hotfix retained.
+- Existing stale-message search fix retained.
+- No extra spreadsheet sheets are created.
+- VEHICLES remains exactly 6 columns.
+- ACCESS_LOG remains exactly 10 columns.

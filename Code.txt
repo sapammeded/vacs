@@ -6,7 +6,7 @@
 const CONFIG={
   SPREADSHEET_ID:'1wFnASAShpQgFA4bMZE2PIH5ccKma66otpHNMjLZgyv4',
   TIMEZONE:'Asia/Jakarta',
-  VERSION:'7.1',
+  VERSION:'7.2',
   CREATED_BY:'Mbah Pri'
 };
 const VEHICLE_HEADERS=['Nama','Nomor Kendaraan','Bagian/Divisi','Jenis Kendaraan','Model','Warna Kendaraan'];
@@ -27,7 +27,7 @@ function doGet(e){try{ensureDatabase_();const p=(e&&e.parameter)||{};return resp
 function response_(cb,obj){const j=JSON.stringify(obj);if(cb){const s=String(cb).replace(/[^\w.$]/g,'');return ContentService.createTextOutput(s+'('+j+');').setMimeType(ContentService.MimeType.JAVASCRIPT)}return ContentService.createTextOutput(j).setMimeType(ContentService.MimeType.JSON)}
 
 function vehicles_(){const sh=db_().getSheetByName('VEHICLES'),n=sh.getLastRow();if(n<2)return[];return sh.getRange(2,1,n-1,6).getValues().map((r,i)=>({row:i+2,name:String(r[0]??'').trim(),plate:String(r[1]??'').trim(),division:String(r[2]??'').trim(),type:String(r[3]??'').trim(),model:String(r[4]??'').trim(),color:String(r[5]??'').trim()}))}
-function logs_(){const sh=db_().getSheetByName('ACCESS_LOG'),n=sh.getLastRow();if(n<2)return[];return sh.getRange(2,1,n-1,10).getValues().map((r,i)=>({row:i+2,name:String(r[0]??''),plate:String(r[1]??''),division:String(r[2]??''),type:String(r[3]??''),model:String(r[4]??''),color:String(r[5]??''),inTime:String(r[6]??''),outTime:String(r[7]??''),date:String(r[8]??''),notes:String(r[9]??'')}))}
+function logs_(){const sh=db_().getSheetByName('ACCESS_LOG'),n=sh.getLastRow();if(n<2)return[];const tz=CONFIG.TIMEZONE;return sh.getRange(2,1,n-1,10).getValues().map((r,i)=>{const fmt=(v,pattern)=>v instanceof Date?Utilities.formatDate(v,tz,pattern):String(v??'');return{row:i+2,name:String(r[0]??''),plate:String(r[1]??''),division:String(r[2]??''),type:String(r[3]??''),model:String(r[4]??''),color:String(r[5]??''),inTime:fmt(r[6],'HH:mm:ss'),outTime:fmt(r[7],'HH:mm:ss'),date:fmt(r[8],'dd/MM/yyyy'),notes:String(r[9]??'')}})}
 
 function audit_(action,plate,name,result,detail,device){
  console.log(JSON.stringify({timestamp:now_().timestamp,createdBy:CONFIG.CREATED_BY,action,plate,name,result,device,detail}));
@@ -89,6 +89,36 @@ function backup_(){
  return{success:true,name:file.getName(),fileId:file.getId(),timestamp:now_().timestamp,createdBy:CONFIG.CREATED_BY}
 }
 
+function adminPin_(){return PropertiesService.getScriptProperties().getProperty('VACS_ADMIN_PIN')||'2580'}
+function requireAdmin_(pin){if(String(pin||'')!==String(adminPin_()))throw Error('PIN ADMIN SALAH.');}
+function deleteVehicle_(p){
+ requireAdmin_(p.pin);
+ const plate=String(p.plate||'').trim();
+ if(!plate)throw Error('Nomor Kendaraan kosong.');
+ const sh=db_().getSheetByName('VEHICLES'), v=vehicles_().find(x=>norm_(x.plate)===norm_(plate));
+ if(!v)throw Error('Kendaraan tidak ditemukan di MASTER.');
+ sh.deleteRow(v.row);
+ audit_('DELETE VEHICLE',v.plate,v.name,'SUCCESS','Master vehicle dihapus; ACCESS_LOG dipertahankan.');
+ return{success:true,plate:v.plate,name:v.name,message:'Kendaraan dihapus dari MASTER. Riwayat ACCESS_LOG tetap dipertahankan.',createdBy:CONFIG.CREATED_BY}
+}
+function deleteAccessLog_(p){
+ requireAdmin_(p.pin);
+ const row=Number(p.row||0);
+ const sh=db_().getSheetByName('ACCESS_LOG');
+ if(!row||row<2||row>sh.getLastRow())throw Error('Baris ACCESS_LOG tidak valid.');
+ const r=sh.getRange(row,1,1,10).getValues()[0];
+ audit_('DELETE ACCESS LOG',String(r[1]||''),String(r[0]||''),'SUCCESS','Transaksi dihapus oleh admin setelah validasi.');
+ sh.deleteRow(row);
+ mergeNames_();
+ return{success:true,message:'Transaksi dihapus dan tercatat pada audit server.',createdBy:CONFIG.CREATED_BY}
+}
+function setAdminPin_(p){
+ requireAdmin_(p.currentPin);
+ const next=String(p.newPin||'').trim();
+ if(!/^\d{4,8}$/.test(next))throw Error('PIN baru harus 4–8 digit.');
+ PropertiesService.getScriptProperties().setProperty('VACS_ADMIN_PIN',next);
+ return{success:true,message:'PIN ADMIN berhasil diubah.'}
+}
 function importVehicles_(p){
  const a=JSON.parse(String(p.rows||'')).map(x=>[String(x.name||'').trim(),String(x.plate||'').trim(),String(x.division||'').trim(),String(x.type||'').trim(),String(x.model||'').trim(),String(x.color||'').trim()]).filter(r=>r[1]);
  if(!a.length)throw Error('Nomor Kendaraan tidak ditemukan.');
@@ -99,6 +129,6 @@ function importVehicles_(p){
 
 function dashboard_(){const v=vehicles_(),l=logs_(),d=now_().date,t=l.filter(x=>x.date===d);return{vehicles:v.length,owners:new Set(v.map(x=>x.name).filter(Boolean)).size,inToday:t.filter(x=>x.inTime).length,outToday:t.filter(x=>x.outTime).length,inside:currentlyInside_().length,createdBy:CONFIG.CREATED_BY}}
 function health_(){ensureDatabase_();return{system:'VACS',status:'ONLINE',version:CONFIG.VERSION,createdBy:CONFIG.CREATED_BY,timestamp:now_().timestamp,spreadsheetId:CONFIG.SPREADSHEET_ID,sheets:db_().getSheets().map(s=>s.getName())}}
-function route_(a,p){switch(a){case'health':return health_();case'dashboard':return dashboard_();case'search':return searchVehicle_(p.q||'');case'registerVehicle':return registerVehicle_(p);case'access':return access_(p);case'current':return currentlyInside_();case'report':return report_(p);case'audit':return auditEvents_(p);case'backup':return backup_();case'importVehicles':return importVehicles_(p);default:throw Error('Action tidak dikenal: '+a)}}
+function route_(a,p){switch(a){case'health':return health_();case'dashboard':return dashboard_();case'search':return searchVehicle_(p.q||'');case'registerVehicle':return registerVehicle_(p);case'access':return access_(p);case'current':return currentlyInside_();case'report':return report_(p);case'audit':return auditEvents_(p);case'backup':return backup_();case'importVehicles':return importVehicles_(p);case'deleteVehicle':return deleteVehicle_(p);case'deleteAccessLog':return deleteAccessLog_(p);case'setAdminPin':return setAdminPin_(p);default:throw Error('Action tidak dikenal: '+a)}}
 function setupVACS(){return health_()}
 function onEdit(e){try{if(e.range.getSheet().getName()==='ACCESS_LOG')mergeNames_()}catch(err){}}
