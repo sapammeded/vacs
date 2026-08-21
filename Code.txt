@@ -88,7 +88,7 @@ function ensureDatabase_(){
     settings.getRange(2,1,7,3).setValues([
       ['SITE_NAME','Vehicle Access Control Center','Nama site/perusahaan'],
       ['TIMEZONE',CONFIG.TIMEZONE,'Timezone server'],
-      ['SYSTEM_VERSION','VACS V5.0','Versi sistem'],
+      ['SYSTEM_VERSION','VACS V5.6','Versi sistem'],
       ['ACCESS_RULE','REGISTERED_ONLY','Kendaraan tidak terdaftar ditolak'],
       ['SEARCH_MODE','PARTIAL','Pencarian nomor polisi partial'],
       ['CENTRAL_DATABASE',CONFIG.SPREADSHEET_ID,'Spreadsheet pusat VACS'],
@@ -761,7 +761,7 @@ function diagnostics_(){
   const present=required.filter(n=>!!ss.getSheetByName(n));
   return {
     system:'VACS',
-    version:'5.5',
+    version:'5.6',
     spreadsheetId:CONFIG.SPREADSHEET_ID,
     centralDatabase:true,
     spreadsheetName:ss.getName(),
